@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useDropzone } from "react-dropzone";
-import { Upload, X, Sparkles, Camera, Type, ArrowRight, Loader2, CheckCircle2, Globe, History, Clock, Trash2 } from "lucide-react";
+import { Upload, X, Sparkles, Camera, Type, ArrowRight, Loader2, CheckCircle2, Globe, History, Clock, Trash2, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -76,6 +76,7 @@ export default function Home() {
   const { toast } = useToast();
   const { history, addToHistory, clearHistory } = useRecipeHistory();
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [historySearch, setHistorySearch] = useState("");
 
   const LUCKY = "__lucky__";
 
@@ -228,7 +229,7 @@ export default function Home() {
           </p>
 
           {/* History button */}
-          <Sheet open={historyOpen} onOpenChange={setHistoryOpen}>
+          <Sheet open={historyOpen} onOpenChange={(open) => { setHistoryOpen(open); if (!open) setHistorySearch(""); }}>
             <SheetTrigger asChild>
               <button
                 data-testid="button-history"
@@ -245,7 +246,7 @@ export default function Home() {
             </SheetTrigger>
             <SheetContent side="right" className="w-full sm:max-w-md flex flex-col p-0">
               <SheetHeader className="px-6 pt-6 pb-4 border-b border-border">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between mb-3">
                   <SheetTitle className="flex items-center gap-2 text-foreground">
                     <History className="w-5 h-5 text-primary" />
                     Recipe History
@@ -261,6 +262,27 @@ export default function Home() {
                     </button>
                   )}
                 </div>
+                {history.length > 0 && (
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+                    <input
+                      type="text"
+                      placeholder="Search recipes, cuisines..."
+                      value={historySearch}
+                      onChange={(e) => setHistorySearch(e.target.value)}
+                      data-testid="input-history-search"
+                      className="w-full pl-8 pr-3 py-2 text-sm bg-muted border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 placeholder:text-muted-foreground"
+                    />
+                    {historySearch && (
+                      <button
+                        onClick={() => setHistorySearch("")}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                )}
               </SheetHeader>
 
               <div className="flex-1 overflow-y-auto">
@@ -269,46 +291,62 @@ export default function Home() {
                     <Clock className="w-10 h-10 opacity-30" />
                     <p className="text-sm text-center">No recipes viewed yet.<br />Open a recipe and it will appear here.</p>
                   </div>
-                ) : (
-                  <ul className="divide-y divide-border">
-                    {history.map((entry, idx) => {
-                      const d = new Date(entry.viewedAt);
-                      const dateStr = d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
-                      const timeStr = d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
-                      return (
-                        <li key={idx}>
-                          <button
-                            data-testid={`button-history-item-${idx}`}
-                            onClick={() => {
-                              handleSelectRecipe(entry.recipe);
-                              setHistoryOpen(false);
-                            }}
-                            className="w-full text-left px-6 py-4 hover:bg-muted/50 transition-colors group"
-                          >
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="min-w-0 flex-1">
-                                <p className="font-medium text-foreground text-sm truncate group-hover:text-primary transition-colors">
-                                  {entry.recipe.name}
-                                </p>
-                                <div className="flex items-center gap-2 mt-1 flex-wrap">
-                                  <span className="text-xs text-muted-foreground">{entry.recipe.cuisine}</span>
-                                  <span className="text-xs text-muted-foreground">·</span>
-                                  <span className="text-xs text-muted-foreground">{entry.recipe.difficulty}</span>
-                                  <span className="text-xs text-muted-foreground">·</span>
-                                  <span className="text-xs text-muted-foreground">{entry.recipe.prepTime} prep</span>
+                ) : (() => {
+                  const q = historySearch.trim().toLowerCase();
+                  const filtered = q
+                    ? history.filter((e) =>
+                        e.recipe.name.toLowerCase().includes(q) ||
+                        e.recipe.cuisine.toLowerCase().includes(q) ||
+                        e.recipe.difficulty.toLowerCase().includes(q) ||
+                        e.recipe.tags?.some((t) => t.toLowerCase().includes(q))
+                      )
+                    : history;
+                  return filtered.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center gap-3 text-muted-foreground px-6 py-16">
+                      <Search className="w-8 h-8 opacity-30" />
+                      <p className="text-sm text-center">No recipes match <span className="font-medium text-foreground">"{historySearch}"</span></p>
+                    </div>
+                  ) : (
+                    <ul className="divide-y divide-border">
+                      {filtered.map((entry, idx) => {
+                        const d = new Date(entry.viewedAt);
+                        const dateStr = d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+                        const timeStr = d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+                        return (
+                          <li key={idx}>
+                            <button
+                              data-testid={`button-history-item-${idx}`}
+                              onClick={() => {
+                                handleSelectRecipe(entry.recipe);
+                                setHistoryOpen(false);
+                              }}
+                              className="w-full text-left px-6 py-4 hover:bg-muted/50 transition-colors group"
+                            >
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="min-w-0 flex-1">
+                                  <p className="font-medium text-foreground text-sm truncate group-hover:text-primary transition-colors">
+                                    {entry.recipe.name}
+                                  </p>
+                                  <div className="flex items-center gap-2 mt-1 flex-wrap">
+                                    <span className="text-xs text-muted-foreground">{entry.recipe.cuisine}</span>
+                                    <span className="text-xs text-muted-foreground">·</span>
+                                    <span className="text-xs text-muted-foreground">{entry.recipe.difficulty}</span>
+                                    <span className="text-xs text-muted-foreground">·</span>
+                                    <span className="text-xs text-muted-foreground">{entry.recipe.prepTime} prep</span>
+                                  </div>
+                                </div>
+                                <div className="text-right flex-shrink-0">
+                                  <p className="text-xs text-muted-foreground">{dateStr}</p>
+                                  <p className="text-xs text-muted-foreground">{timeStr}</p>
                                 </div>
                               </div>
-                              <div className="text-right flex-shrink-0">
-                                <p className="text-xs text-muted-foreground">{dateStr}</p>
-                                <p className="text-xs text-muted-foreground">{timeStr}</p>
-                              </div>
-                            </div>
-                          </button>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                )}
+                            </button>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  );
+                })()}
               </div>
             </SheetContent>
           </Sheet>
