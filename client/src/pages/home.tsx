@@ -260,41 +260,42 @@ export default function Home() {
       <div className="max-w-5xl mx-auto px-4 py-8">
         {/* Header */}
         <header className="text-center mb-10 relative">
-          <div className="flex items-center justify-center gap-3 mb-3">
-            {/* Crossed fork & spoon logo */}
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="currentColor" className="w-12 h-12 text-primary">
-              {/* Spoon — drawn vertical, rotated -45° so bowl goes upper-left */}
-              <g transform="rotate(-45 50 50)">
-                <ellipse cx="50" cy="16" rx="8" ry="10"/>
-                <path d="M47.2 25 C46.8 27 47 28.5 47.5 29.5 L48.2 83 Q48.2 85.5 50 85.5 Q51.8 85.5 51.8 83 L52.5 29.5 C53 28.5 53.2 27 52.8 25 Z"/>
-              </g>
-              {/* Fork — drawn vertical, rotated +45° so tines go upper-right */}
-              <g transform="rotate(45 50 50)">
-                <rect x="43.5" y="8" width="3.5" height="18" rx="1.75"/>
-                <rect x="48.25" y="8" width="3.5" height="18" rx="1.75"/>
-                <rect x="53" y="8" width="3.5" height="18" rx="1.75"/>
-                <path d="M43.5 23.5 Q50 26 56.5 23.5 L56.5 27.5 Q50 30 43.5 27.5 Z"/>
-                <rect x="48" y="27" width="4" height="58" rx="2"/>
-              </g>
-              {/* Corner dots */}
-              <circle cx="16" cy="16" r="4.5"/>
-              <circle cx="84" cy="16" r="4.5"/>
-              <circle cx="16" cy="84" r="4.5"/>
-              <circle cx="84" cy="84" r="4.5"/>
-              {/* Side dots */}
-              <circle cx="8"  cy="50" r="2.8"/>
-              <circle cx="92" cy="50" r="2.8"/>
-              <circle cx="50" cy="8"  r="2.8"/>
-              <circle cx="50" cy="92" r="2.8"/>
-              {/* Leaf / petal splashes — diagonal, near the cross */}
-              <ellipse cx="32" cy="32" rx="6" ry="2.2" transform="rotate(-45 32 32)"/>
-              <ellipse cx="68" cy="32" rx="6" ry="2.2" transform="rotate(45 68 32)"/>
-              <ellipse cx="32" cy="68" rx="6" ry="2.2" transform="rotate(45 32 68)"/>
-              <ellipse cx="68" cy="68" rx="6" ry="2.2" transform="rotate(-45 68 68)"/>
+          {/* F-fork wordmark */}
+          <div className="flex items-center justify-center mb-3" data-testid="logo-wordmark">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 60 90"
+              fill="currentColor"
+              className="text-primary"
+              style={{ height: "3.5rem", display: "block" }}
+              aria-hidden="true"
+            >
+              {/* Tine A — leftmost, becomes the vertical handle / left stroke of F */}
+              <rect x="3"  y="0" width="12" height="33" rx="6"/>
+              {/* Tine B — centre */}
+              <rect x="19" y="0" width="12" height="33" rx="6"/>
+              {/* Tine C — rightmost */}
+              <rect x="35" y="0" width="12" height="33" rx="6"/>
+              {/* Tine base — horizontal connector = top arm of F */}
+              <rect x="3"  y="28" width="44" height="12" rx="6"/>
+              {/* Handle — continues tine A downward = left vertical stroke of F */}
+              <rect x="3"  y="37" width="12" height="53" rx="6"/>
+              {/* Middle crossbar = second arm of F */}
+              <rect x="3"  y="59" width="37" height="11" rx="5.5"/>
             </svg>
-            <h1 className="text-4xl font-bold tracking-tight text-foreground">
-              Fork It
-            </h1>
+            <span
+              className="text-primary select-none leading-none"
+              style={{
+                fontFamily: "'Syne', sans-serif",
+                fontWeight: 800,
+                fontSize: "3.1rem",
+                letterSpacing: "-0.025em",
+                marginLeft: "3px",
+                lineHeight: 1,
+              }}
+            >
+              ork It
+            </span>
           </div>
           <p className="text-muted-foreground text-lg max-w-md mx-auto">
             Tell us what's in your fridge and we'll find the perfect recipes for you
