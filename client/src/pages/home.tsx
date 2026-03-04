@@ -1,13 +1,15 @@
 import { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useDropzone } from "react-dropzone";
-import { Upload, X, ChefHat, Sparkles, Camera, Type, ArrowRight, Loader2, CheckCircle2, Globe } from "lucide-react";
+import { Upload, X, ChefHat, Sparkles, Camera, Type, ArrowRight, Loader2, CheckCircle2, Globe, History, Clock, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useToast } from "@/hooks/use-toast";
 import RecipeGrid from "@/components/RecipeGrid";
 import RecipeDetail from "@/components/RecipeDetail";
+import { useRecipeHistory } from "@/hooks/use-recipe-history";
 
 const CUISINES = [
   { label: "Italian", emoji: "🇮🇹" },
@@ -72,6 +74,8 @@ export default function Home() {
   const [isLoadingRecipes, setIsLoadingRecipes] = useState(false);
   const [selectedCuisines, setSelectedCuisines] = useState<string[]>([]);
   const { toast } = useToast();
+  const { history, addToHistory, clearHistory } = useRecipeHistory();
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   const LUCKY = "__lucky__";
 
@@ -177,6 +181,7 @@ export default function Home() {
   const handleSelectRecipe = (recipe: Recipe) => {
     setSelectedRecipe(recipe);
     setView("detail");
+    addToHistory(recipe);
   };
 
   const handleBack = () => {
@@ -205,7 +210,7 @@ export default function Home() {
     <div className="min-h-screen chef-bg">
       <div className="max-w-5xl mx-auto px-4 py-8">
         {/* Header */}
-        <header className="text-center mb-10">
+        <header className="text-center mb-10 relative">
           <div className="flex items-center justify-center gap-3 mb-3">
             <div className="w-12 h-12 rounded-2xl bg-primary flex items-center justify-center shadow-md">
               <ChefHat className="w-7 h-7 text-primary-foreground" />
@@ -217,6 +222,92 @@ export default function Home() {
           <p className="text-muted-foreground text-lg max-w-md mx-auto">
             Tell us what's in your fridge and we'll find the perfect recipes for you
           </p>
+
+          {/* History button */}
+          <Sheet open={historyOpen} onOpenChange={setHistoryOpen}>
+            <SheetTrigger asChild>
+              <button
+                data-testid="button-history"
+                className="absolute right-0 top-0 flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium text-muted-foreground border border-border bg-card hover-elevate active-elevate-2 transition-all shadow-sm"
+              >
+                <History className="w-4 h-4" />
+                History
+                {history.length > 0 && (
+                  <span className="ml-0.5 bg-primary text-primary-foreground text-xs font-bold rounded-full px-1.5 py-0.5 leading-none">
+                    {history.length}
+                  </span>
+                )}
+              </button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-full sm:max-w-md flex flex-col p-0">
+              <SheetHeader className="px-6 pt-6 pb-4 border-b border-border">
+                <div className="flex items-center justify-between">
+                  <SheetTitle className="flex items-center gap-2 text-foreground">
+                    <History className="w-5 h-5 text-primary" />
+                    Recipe History
+                  </SheetTitle>
+                  {history.length > 0 && (
+                    <button
+                      onClick={clearHistory}
+                      data-testid="button-clear-history"
+                      className="flex items-center gap-1 text-xs text-muted-foreground hover:text-destructive transition-colors px-2 py-1 rounded hover-elevate"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      Clear all
+                    </button>
+                  )}
+                </div>
+              </SheetHeader>
+
+              <div className="flex-1 overflow-y-auto">
+                {history.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-full gap-3 text-muted-foreground px-6 py-16">
+                    <Clock className="w-10 h-10 opacity-30" />
+                    <p className="text-sm text-center">No recipes viewed yet.<br />Open a recipe and it will appear here.</p>
+                  </div>
+                ) : (
+                  <ul className="divide-y divide-border">
+                    {history.map((entry, idx) => {
+                      const d = new Date(entry.viewedAt);
+                      const dateStr = d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+                      const timeStr = d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+                      return (
+                        <li key={idx}>
+                          <button
+                            data-testid={`button-history-item-${idx}`}
+                            onClick={() => {
+                              handleSelectRecipe(entry.recipe);
+                              setHistoryOpen(false);
+                            }}
+                            className="w-full text-left px-6 py-4 hover:bg-muted/50 transition-colors group"
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0 flex-1">
+                                <p className="font-medium text-foreground text-sm truncate group-hover:text-primary transition-colors">
+                                  {entry.recipe.name}
+                                </p>
+                                <div className="flex items-center gap-2 mt-1 flex-wrap">
+                                  <span className="text-xs text-muted-foreground">{entry.recipe.cuisine}</span>
+                                  <span className="text-xs text-muted-foreground">·</span>
+                                  <span className="text-xs text-muted-foreground">{entry.recipe.difficulty}</span>
+                                  <span className="text-xs text-muted-foreground">·</span>
+                                  <span className="text-xs text-muted-foreground">{entry.recipe.prepTime} prep</span>
+                                </div>
+                              </div>
+                              <div className="text-right flex-shrink-0">
+                                <p className="text-xs text-muted-foreground">{dateStr}</p>
+                                <p className="text-xs text-muted-foreground">{timeStr}</p>
+                              </div>
+                            </div>
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
+            </SheetContent>
+          </Sheet>
         </header>
 
         {/* Progress breadcrumb */}
