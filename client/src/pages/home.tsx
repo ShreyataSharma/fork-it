@@ -212,15 +212,13 @@ export default function Home() {
         {/* Header */}
         <header className="text-center mb-10 relative">
           <div className="flex items-center justify-center gap-3 mb-3">
-            <div className="w-12 h-12 rounded-2xl bg-primary flex items-center justify-center shadow-md">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="w-7 h-7 text-primary-foreground">
-                <line x1="8" y1="2" x2="8" y2="7" />
-                <line x1="12" y1="2" x2="12" y2="7" />
-                <line x1="16" y1="2" x2="16" y2="7" />
-                <path d="M8 7 Q8 10.5 12 10.5 Q16 10.5 16 7" />
-                <line x1="12" y1="10.5" x2="12" y2="22" />
-              </svg>
-            </div>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="w-10 h-10 text-primary">
+              <line x1="8" y1="2" x2="8" y2="7" />
+              <line x1="12" y1="2" x2="12" y2="7" />
+              <line x1="16" y1="2" x2="16" y2="7" />
+              <path d="M8 7 Q8 10.5 12 10.5 Q16 10.5 16 7" />
+              <line x1="12" y1="10.5" x2="12" y2="22" />
+            </svg>
             <h1 className="text-4xl font-bold tracking-tight text-foreground">
               Fork It
             </h1>
