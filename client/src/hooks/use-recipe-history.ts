@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import type { Recipe } from "@/pages/home";
 
-const STORAGE_KEY = "fridgechef_history";
+const STORAGE_KEY = "forkit_history";
 const MAX_HISTORY = 50;
 
 export interface HistoryEntry {

@@ -758,7 +758,7 @@ export default function RecipeDetail({ recipe, onBack, userIngredients }: Props)
                       <MessageSquare className="w-4 h-4 text-primary-foreground" />
                     </div>
                     <div>
-                      <h3 className="font-semibold text-sm text-foreground">Chef Assistant</h3>
+                      <h3 className="font-semibold text-sm text-foreground">Sous Chef</h3>
                       <p className="text-xs text-muted-foreground">Substitutions and cooking tips</p>
                     </div>
                   </div>

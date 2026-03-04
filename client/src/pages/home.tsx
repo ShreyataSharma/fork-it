@@ -216,7 +216,7 @@ export default function Home() {
               <ChefHat className="w-7 h-7 text-primary-foreground" />
             </div>
             <h1 className="text-4xl font-bold tracking-tight text-foreground">
-              FridgeChef
+              Fork It
             </h1>
           </div>
           <p className="text-muted-foreground text-lg max-w-md mx-auto">
