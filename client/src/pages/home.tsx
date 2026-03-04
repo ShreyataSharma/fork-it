@@ -1,13 +1,30 @@
 import { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useDropzone } from "react-dropzone";
-import { Upload, X, ChefHat, Sparkles, Camera, Type, ArrowRight, Loader2, CheckCircle2 } from "lucide-react";
+import { Upload, X, ChefHat, Sparkles, Camera, Type, ArrowRight, Loader2, CheckCircle2, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import RecipeGrid from "@/components/RecipeGrid";
 import RecipeDetail from "@/components/RecipeDetail";
+
+const CUISINES = [
+  { label: "Italian", emoji: "🇮🇹" },
+  { label: "Asian", emoji: "🥢" },
+  { label: "Mexican", emoji: "🇲🇽" },
+  { label: "American", emoji: "🍔" },
+  { label: "Indian", emoji: "🇮🇳" },
+  { label: "Mediterranean", emoji: "🫒" },
+  { label: "French", emoji: "🇫🇷" },
+  { label: "Middle Eastern", emoji: "🧆" },
+  { label: "Japanese", emoji: "🇯🇵" },
+  { label: "Korean", emoji: "🇰🇷" },
+  { label: "Thai", emoji: "🇹🇭" },
+  { label: "Chinese", emoji: "🇨🇳" },
+  { label: "Greek", emoji: "🇬🇷" },
+  { label: "Spanish", emoji: "🇪🇸" },
+];
 
 type View = "input" | "ingredients" | "recipes" | "detail";
 
@@ -43,7 +60,14 @@ export default function Home() {
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
   const [isIdentifying, setIsIdentifying] = useState(false);
   const [isLoadingRecipes, setIsLoadingRecipes] = useState(false);
+  const [selectedCuisines, setSelectedCuisines] = useState<string[]>([]);
   const { toast } = useToast();
+
+  const toggleCuisine = (label: string) => {
+    setSelectedCuisines((prev) =>
+      prev.includes(label) ? prev.filter((c) => c !== label) : [...prev, label]
+    );
+  };
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     const newFiles = [...uploadedImages, ...acceptedFiles].slice(0, 10);
@@ -119,7 +143,7 @@ export default function Home() {
       const res = await fetch("/api/get-recipes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ingredients: identifiedIngredients }),
+        body: JSON.stringify({ ingredients: identifiedIngredients, cuisines: selectedCuisines }),
       });
 
       if (!res.ok) throw new Error("Failed to get recipes");
@@ -157,6 +181,7 @@ export default function Home() {
     setIdentifiedIngredients([]);
     setRecipes([]);
     setSelectedRecipe(null);
+    setSelectedCuisines([]);
   };
 
   return (
@@ -352,6 +377,52 @@ export default function Home() {
                 </AnimatePresence>
               </div>
 
+              {/* Cuisine preference */}
+              <div className="bg-card border border-card-border rounded-2xl p-6 shadow-sm">
+                <div className="flex items-center gap-2 mb-1">
+                  <Globe className="w-4 h-4 text-primary" />
+                  <h3 className="font-semibold text-foreground text-sm">Cuisine Preference</h3>
+                  <span className="text-xs text-muted-foreground ml-1">(optional)</span>
+                </div>
+                <p className="text-xs text-muted-foreground mb-4">
+                  Pick one or more cuisines to focus the recipes, or leave it open for a global mix.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {CUISINES.map(({ label, emoji }) => {
+                    const active = selectedCuisines.includes(label);
+                    return (
+                      <button
+                        key={label}
+                        onClick={() => toggleCuisine(label)}
+                        data-testid={`button-cuisine-${label.toLowerCase().replace(/\s+/g, "-")}`}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium border transition-all hover-elevate active-elevate-2 ${
+                          active
+                            ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                            : "bg-muted text-muted-foreground border-border hover:border-primary/50 hover:text-foreground"
+                        }`}
+                      >
+                        <span>{emoji}</span>
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+                {selectedCuisines.length > 0 && (
+                  <div className="mt-3 pt-3 border-t border-border flex items-center justify-between gap-2">
+                    <p className="text-xs text-muted-foreground">
+                      Recipes will lean toward: <span className="font-medium text-foreground">{selectedCuisines.join(", ")}</span>
+                    </p>
+                    <button
+                      onClick={() => setSelectedCuisines([])}
+                      className="text-xs text-muted-foreground hover-elevate active-elevate-2 rounded px-1.5 py-0.5"
+                      data-testid="button-clear-cuisines"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                )}
+              </div>
+
               <div className="flex justify-center">
                 <Button
                   size="lg"
@@ -423,10 +494,21 @@ export default function Home() {
                   ))}
                 </div>
 
-                <div className="border-t border-border pt-4">
+                <div className="border-t border-border pt-4 space-y-2">
                   <p className="text-xs text-muted-foreground">
                     We'll also assume you have basic pantry staples like salt, pepper, olive oil, garlic, onions, and common spices.
                   </p>
+                  {selectedCuisines.length > 0 && (
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Globe className="w-3.5 h-3.5 text-primary flex-shrink-0" />
+                      <span className="text-xs text-muted-foreground">Cuisine preference:</span>
+                      {selectedCuisines.map((c) => (
+                        <span key={c} className="text-xs font-medium text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+                          {c}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
 

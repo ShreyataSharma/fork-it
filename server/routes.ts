@@ -76,15 +76,21 @@ export async function registerRoutes(
 
   app.post("/api/get-recipes", async (req: Request, res: Response) => {
     try {
-      const { ingredients } = req.body;
+      const { ingredients, cuisines } = req.body;
 
       if (!ingredients || !Array.isArray(ingredients) || ingredients.length === 0) {
         return res.status(400).json({ error: "Ingredients list is required" });
       }
 
+      const cuisineInstruction = Array.isArray(cuisines) && cuisines.length > 0
+        ? `The user prefers these cuisines: ${cuisines.join(", ")}. Lean the 10 recipes heavily toward these cuisines — at least 8 of the 10 recipes should belong to one of these cuisines. You may occasionally blend styles or include 1-2 variations, but the focus should be on the preferred cuisines.`
+        : `Generate a diverse mix of cuisines (Italian, Asian, Mexican, American, Indian, Mediterranean, and others).`;
+
       const prompt = `You are a world-class chef. Based on these main ingredients the user has: ${ingredients.join(", ")}
 
-Generate exactly 10 diverse, delicious recipes. Assume the user has standard pantry staples (salt, pepper, olive oil, butter, garlic, onions, basic spices, soy sauce, vinegar, flour, sugar, eggs, milk, common condiments).
+Generate exactly 10 delicious recipes. Assume the user has standard pantry staples (salt, pepper, olive oil, butter, garlic, onions, basic spices, soy sauce, vinegar, flour, sugar, eggs, milk, common condiments).
+
+${cuisineInstruction}
 
 For each recipe, respond in this EXACT JSON format:
 {
