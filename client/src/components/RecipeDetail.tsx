@@ -652,9 +652,7 @@ export default function RecipeDetail({ recipe, onBack, userIngredients }: Props)
                         className={`text-xs px-2 py-1 rounded-md flex-shrink-0 hover-elevate active-elevate-2 transition-colors ${
                           isSelected
                             ? "bg-primary/20 text-primary"
-                            : !ing.userHas
-                            ? "bg-amber-100 text-amber-800"
-                            : "bg-muted text-muted-foreground"
+                            : "bg-yellow-200 text-yellow-800"
                         }`}
                         data-testid={`button-substitute-${idx}`}
                       >
