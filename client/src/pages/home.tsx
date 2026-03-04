@@ -73,10 +73,17 @@ export default function Home() {
   const [selectedCuisines, setSelectedCuisines] = useState<string[]>([]);
   const { toast } = useToast();
 
+  const LUCKY = "__lucky__";
+
   const toggleCuisine = (label: string) => {
-    setSelectedCuisines((prev) =>
-      prev.includes(label) ? prev.filter((c) => c !== label) : [...prev, label]
-    );
+    if (label === LUCKY) {
+      setSelectedCuisines((prev) => (prev.includes(LUCKY) ? [] : [LUCKY]));
+    } else {
+      setSelectedCuisines((prev) => {
+        const without = prev.filter((c) => c !== LUCKY);
+        return without.includes(label) ? without.filter((c) => c !== label) : [...without, label];
+      });
+    }
   };
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
@@ -416,11 +423,27 @@ export default function Home() {
                       </button>
                     );
                   })}
+                  {/* I'm Feeling Lucky chip */}
+                  <button
+                    onClick={() => toggleCuisine(LUCKY)}
+                    data-testid="button-cuisine-lucky"
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium border transition-all hover-elevate active-elevate-2 ${
+                      selectedCuisines.includes(LUCKY)
+                        ? "bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white border-violet-500 shadow-sm"
+                        : "bg-muted text-muted-foreground border-border hover:border-violet-400 hover:text-foreground"
+                    }`}
+                  >
+                    <span>🎲</span>
+                    I'm Feeling Lucky
+                  </button>
                 </div>
                 {selectedCuisines.length > 0 && (
                   <div className="mt-3 pt-3 border-t border-border flex items-center justify-between gap-2">
                     <p className="text-xs text-muted-foreground">
-                      Recipes will lean toward: <span className="font-medium text-foreground">{selectedCuisines.join(", ")}</span>
+                      {selectedCuisines.includes(LUCKY)
+                        ? <span>✨ Surprise mix of <span className="font-medium text-foreground">rare & fusion cuisines</span></span>
+                        : <>Recipes will lean toward: <span className="font-medium text-foreground">{selectedCuisines.join(", ")}</span></>
+                      }
                     </p>
                     <button
                       onClick={() => setSelectedCuisines([])}
@@ -512,7 +535,11 @@ export default function Home() {
                     <div className="flex items-center gap-2 flex-wrap">
                       <Globe className="w-3.5 h-3.5 text-primary flex-shrink-0" />
                       <span className="text-xs text-muted-foreground">Cuisine preference:</span>
-                      {selectedCuisines.map((c) => (
+                      {selectedCuisines.includes("__lucky__") ? (
+                        <span className="text-xs font-medium text-violet-600 bg-violet-100 px-2 py-0.5 rounded-full">
+                          🎲 I'm Feeling Lucky
+                        </span>
+                      ) : selectedCuisines.map((c) => (
                         <span key={c} className="text-xs font-medium text-primary bg-primary/10 px-2 py-0.5 rounded-full">
                           {c}
                         </span>

@@ -99,7 +99,15 @@ export async function registerRoutes(
         "Greek": ["Turkish", "Lebanese", "Italian", "Mediterranean"],
       };
 
-      const cuisineInstruction = Array.isArray(cuisines) && cuisines.length > 0
+      const isLucky = Array.isArray(cuisines) && cuisines.includes("__lucky__");
+
+      const cuisineInstruction = isLucky
+        ? `LUCKY MIX — the user wants a surprise. Generate all 10 recipes using a creative mix of:
+1. Lesser-known / underrepresented cuisines — choose from: Brazilian, Peruvian, Ethiopian, Moroccan, Central European (Czech, Polish, Hungarian), Georgian, Uzbek, Sri Lankan, Filipino, Trinidadian, Jamaican, Venezuelan, Egyptian, Tunisian, Burmese, Laotian, Basque, Catalan, Sicilian, Levantine, Yemeni, Afghan, Congolese, Ghanaian, West African
+2. Creative fusion cuisines — choose from: Indo-Chinese, American-Japanese (Japanamerican), Malay-Indian (Mamak), Tex-Mex, Korean-Mexican, Vietnamese-French, Indian-Caribbean, Afro-Brazilian, Nikkei (Japanese-Peruvian), Chifa (Chinese-Peruvian), Hawaiian-Asian (Plate Lunch), British-Indian (Balti), Fusion-Mediterranean
+
+Spread the 10 recipes across a mix of BOTH categories (at least 4 from lesser-known, at least 4 from fusion, the rest your creative choice). Every recipe's "cuisine" field must accurately name the specific cuisine (e.g. "Brazilian", "Indo-Chinese", "Nikkei").`
+        : Array.isArray(cuisines) && cuisines.length > 0
         ? (() => {
             const fallbacks = [...new Set(cuisines.flatMap(c => similarCuisines[c] || []))].filter(f => !cuisines.includes(f));
             return `CUISINE CONSTRAINT — follow these rules in order, no exceptions:
