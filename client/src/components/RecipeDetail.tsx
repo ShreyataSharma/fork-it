@@ -738,11 +738,11 @@ export default function RecipeDetail({ recipe, onBack, userIngredients }: Props)
               })}
             </div>
           </div>
+
+          {/* Nutrition Chart — below instructions */}
+          {recipe.macros && <NutritionChart macros={recipe.macros} defaultServings={recipe.servings} />}
         </div>
       </div>
-
-      {/* Nutrition Chart */}
-      {recipe.macros && <NutritionChart macros={recipe.macros} defaultServings={recipe.servings} />}
 
       {/* AI Chat panel */}
       <AnimatePresence>
