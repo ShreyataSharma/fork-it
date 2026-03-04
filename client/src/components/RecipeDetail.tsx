@@ -312,6 +312,22 @@ function NutritionChart({ macros, defaultServings }: { macros: RecipeMacros; def
             </div>,
           ];
         })}
+
+        {/* Fiber row */}
+        {(macros.fiber ?? 0) > 0 && [
+          <div key="fiber-label" className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-green-300 flex-shrink-0" />
+            <span className="text-xs text-muted-foreground">Fibre</span>
+          </div>,
+          <div key="fiber-single" className="text-center">
+            <div className="text-xs text-foreground font-medium">{macros.fiber}g</div>
+            <div className="text-xs text-muted-foreground">per serving</div>
+          </div>,
+          <div key="fiber-default" className="text-center">
+            <div className="text-xs text-foreground font-medium">{macros.fiber * defaultServings}g</div>
+            <div className="text-xs text-muted-foreground">total</div>
+          </div>,
+        ]}
       </div>
 
       <p className="text-xs text-muted-foreground/60 mt-4 italic">
