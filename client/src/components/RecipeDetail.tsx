@@ -84,23 +84,11 @@ function parseFraction(s: string): number | null {
   return isNaN(n) ? null : n;
 }
 
-const NICE_FRACTIONS: [number, string][] = [
-  [1 / 8, "1/8"], [1 / 4, "1/4"], [1 / 3, "1/3"], [3 / 8, "3/8"],
-  [1 / 2, "1/2"], [5 / 8, "5/8"], [2 / 3, "2/3"], [3 / 4, "3/4"], [7 / 8, "7/8"],
-];
-
 function formatNumber(n: number): string {
   if (n <= 0) return "0";
-  const whole = Math.floor(n);
-  const frac = n - whole;
-  for (const [val, str] of NICE_FRACTIONS) {
-    if (Math.abs(frac - val) < 0.04) {
-      return whole === 0 ? str : `${whole} ${str}`;
-    }
-  }
-  if (frac < 0.04) return String(whole);
-  // fallback: 1 decimal, trim trailing zero
-  return n.toFixed(1).replace(/\.0$/, "");
+  const rounded = Math.round(n * 100) / 100;
+  const str = rounded.toFixed(2);
+  return str.replace(/\.?0+$/, "");
 }
 
 function scaleAmount(amount: string, scale: number): string {
