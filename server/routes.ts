@@ -82,8 +82,37 @@ export async function registerRoutes(
         return res.status(400).json({ error: "Ingredients list is required" });
       }
 
+      const similarCuisines: Record<string, string[]> = {
+        "Indian": ["Pakistani", "Sri Lankan", "Bangladeshi", "Nepali"],
+        "Asian": ["Chinese", "Japanese", "Korean", "Thai", "Vietnamese", "Filipino", "Malaysian"],
+        "Chinese": ["Japanese", "Korean", "Thai", "Vietnamese"],
+        "Japanese": ["Korean", "Chinese", "Thai"],
+        "Korean": ["Japanese", "Chinese", "Thai", "Vietnamese"],
+        "Thai": ["Vietnamese", "Malaysian", "Indonesian", "Filipino"],
+        "Mediterranean": ["Greek", "Turkish", "Lebanese", "Moroccan", "Spanish"],
+        "French": ["Italian", "Belgian", "Swiss"],
+        "Italian": ["French", "Spanish", "Greek"],
+        "Mexican": ["Peruvian", "Colombian", "Brazilian", "Latin American"],
+        "American": ["Canadian", "Australian", "British"],
+        "Spanish": ["Portuguese", "Italian", "Mexican"],
+        "Middle Eastern": ["Lebanese", "Turkish", "Persian", "Israeli", "Moroccan"],
+        "Greek": ["Turkish", "Lebanese", "Italian", "Mediterranean"],
+      };
+
       const cuisineInstruction = Array.isArray(cuisines) && cuisines.length > 0
-        ? `The user has selected these cuisines: ${cuisines.join(", ")}. ALL 10 recipes MUST come exclusively from these cuisines. Spread the recipes across the selected cuisines as evenly as possible. Only if it is genuinely impossible to generate 10 distinct, quality recipes from the selected cuisines alone (e.g. only one very narrow cuisine was chosen), may you fill the remaining slots with recipes from closely related or neighbouring cuisines — and in that case, set the "cuisine" field to the actual cuisine of that recipe so the user knows. Never pad with unrelated cuisines.`
+        ? (() => {
+            const fallbacks = [...new Set(cuisines.flatMap(c => similarCuisines[c] || []))].filter(f => !cuisines.includes(f));
+            return `CUISINE CONSTRAINT — follow these rules in order, no exceptions:
+
+SELECTED CUISINES: ${cuisines.join(", ")}
+
+RULE 1: Generate as many recipes as possible using ONLY the selected cuisines above. Spread them evenly across the selections.
+RULE 2: If you reach 10 recipes using only the selected cuisines, STOP — do not add any other cuisine. Return exactly those 10.
+RULE 3: Only if you cannot reach 10 recipes from the selected cuisines alone, fill the remaining slots using ONLY these similar cuisines: ${fallbacks.length > 0 ? fallbacks.join(", ") : "the closest culturally related cuisines"}. Never use cuisines unrelated to the selection.
+RULE 4: Every recipe's "cuisine" field must reflect its actual cuisine — do not label a recipe with a selected cuisine if it belongs to a fallback cuisine.
+
+VIOLATION CHECK: Before returning, verify every recipe belongs to either a selected cuisine or an approved fallback. Remove and replace any that do not.`;
+          })()
         : `Generate a diverse mix of cuisines (Italian, Asian, Mexican, American, Indian, Mediterranean, and others).`;
 
       const prompt = `You are a world-class chef. Based on these main ingredients the user has: ${ingredients.join(", ")}
@@ -118,7 +147,7 @@ For each recipe, respond in this EXACT JSON format:
   ]
 }
 
-Make recipes varied - different cuisines, cooking methods, difficulty levels. Set userHas to true if the ingredient is in the user's list or is a common pantry staple. Set to false for specialty ingredients they may not have.`;
+Make recipes varied in cooking methods and difficulty levels. Set userHas to true if the ingredient is in the user's list or is a common pantry staple. Set to false for specialty ingredients they may not have.`;
 
       const response = await openai.chat.completions.create({
         model: "gpt-5.2",
@@ -129,6 +158,21 @@ Make recipes varied - different cuisines, cooking methods, difficulty levels. Se
 
       const content = response.choices[0]?.message?.content || "{}";
       const parsed = JSON.parse(content);
+
+      // Post-processing: filter out recipes that don't match selected cuisines or their fallbacks
+      if (Array.isArray(cuisines) && cuisines.length > 0 && Array.isArray(parsed.recipes)) {
+        const fallbacks = [...new Set(cuisines.flatMap((c: string) => similarCuisines[c] || []))];
+        const allowedSet = [...cuisines.map((c: string) => c.toLowerCase()), ...fallbacks.map((f: string) => f.toLowerCase())];
+        const filtered = parsed.recipes.filter((r: any) => {
+          const rc = (r.cuisine || "").toLowerCase();
+          return allowedSet.some(allowed => rc.includes(allowed) || allowed.includes(rc));
+        });
+        // Only replace if filter removed some recipes (keep original if all pass — preserves order)
+        if (filtered.length < parsed.recipes.length) {
+          console.log(`[cuisine-filter] Removed ${parsed.recipes.length - filtered.length} off-cuisine recipe(s). Kept ${filtered.length}.`);
+          parsed.recipes = filtered;
+        }
+      }
 
       res.json(parsed);
     } catch (error) {
