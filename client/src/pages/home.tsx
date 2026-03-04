@@ -260,42 +260,17 @@ export default function Home() {
       <div className="max-w-5xl mx-auto px-4 py-8">
         {/* Header */}
         <header className="text-center mb-10 relative">
-          {/* F-fork wordmark */}
-          <div className="flex items-center justify-center mb-3" data-testid="logo-wordmark">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 60 90"
-              fill="currentColor"
-              className="text-primary"
-              style={{ height: "3.5rem", display: "block" }}
-              aria-hidden="true"
-            >
-              {/* Tine A — leftmost, becomes the vertical handle / left stroke of F */}
-              <rect x="3"  y="0" width="12" height="33" rx="6"/>
-              {/* Tine B — centre */}
-              <rect x="19" y="0" width="12" height="33" rx="6"/>
-              {/* Tine C — rightmost */}
-              <rect x="35" y="0" width="12" height="33" rx="6"/>
-              {/* Tine base — horizontal connector = top arm of F */}
-              <rect x="3"  y="28" width="44" height="12" rx="6"/>
-              {/* Handle — continues tine A downward = left vertical stroke of F */}
-              <rect x="3"  y="37" width="12" height="53" rx="6"/>
-              {/* Middle crossbar = second arm of F */}
-              <rect x="3"  y="59" width="37" height="11" rx="5.5"/>
+          <div className="flex items-center justify-center gap-3 mb-3">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="w-10 h-10 text-primary">
+              <line x1="8" y1="2" x2="8" y2="7" />
+              <line x1="12" y1="2" x2="12" y2="7" />
+              <line x1="16" y1="2" x2="16" y2="7" />
+              <path d="M8 7 Q8 10.5 12 10.5 Q16 10.5 16 7" />
+              <line x1="12" y1="10.5" x2="12" y2="22" />
             </svg>
-            <span
-              className="text-primary select-none leading-none"
-              style={{
-                fontFamily: "'Syne', sans-serif",
-                fontWeight: 800,
-                fontSize: "3.1rem",
-                letterSpacing: "-0.025em",
-                marginLeft: "3px",
-                lineHeight: 1,
-              }}
-            >
-              ork It
-            </span>
+            <h1 className="text-4xl font-bold tracking-tight text-foreground">
+              Fork It
+            </h1>
           </div>
           <p className="text-muted-foreground text-lg max-w-md mx-auto">
             Tell us what's in your fridge and we'll find the perfect recipes for you
