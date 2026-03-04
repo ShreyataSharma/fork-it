@@ -16,6 +16,7 @@ interface ChatMessage {
 interface Props {
   recipe: Recipe;
   onBack: () => void;
+  userIngredients: string[];
 }
 
 const difficultyColors: Record<string, string> = {
@@ -339,7 +340,7 @@ function NutritionChart({ macros, defaultServings }: { macros: RecipeMacros; def
 
 // ────────────────────────────────────────────────────────────────────────────
 
-export default function RecipeDetail({ recipe, onBack }: Props) {
+export default function RecipeDetail({ recipe, onBack, userIngredients }: Props) {
   const [chatOpen, setChatOpen] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState("");
@@ -586,7 +587,7 @@ export default function RecipeDetail({ recipe, onBack }: Props) {
               {recipe.allIngredients.map((ing, idx) => {
                 const substitutable = canSubstitute(ing, recipe.mainIngredients);
                 const isSelected = selectedIngredients.has(ing.name);
-                const isOwn = isUserIngredient(ing.name, recipe.mainIngredients);
+                const isOwn = isUserIngredient(ing.name, userIngredients);
                 const isSkip = isAlwaysSkip(ing.name);
 
                 let rowClass = "bg-muted/40";

@@ -576,7 +576,7 @@ export default function Home() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
             >
-              <RecipeDetail recipe={selectedRecipe} onBack={handleBack} />
+              <RecipeDetail recipe={selectedRecipe} onBack={handleBack} userIngredients={identifiedIngredients} />
             </motion.div>
           )}
         </AnimatePresence>
