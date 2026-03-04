@@ -122,8 +122,6 @@ function scaleAmount(amount: string, scale: number): string {
 // ── Unit conversion ──────────────────────────────────────────────────────────
 
 const VOL_IMP: Record<string, number> = {
-  tsp: 4.929, teaspoon: 4.929, teaspoons: 4.929,
-  tbsp: 14.787, tablespoon: 14.787, tablespoons: 14.787,
   "fl oz": 29.574,
   cup: 236.59, cups: 236.59,
   pint: 473.18, pints: 473.18, pt: 473.18,
