@@ -76,7 +76,7 @@ export async function registerRoutes(
 
   app.post("/api/get-recipes", async (req: Request, res: Response) => {
     try {
-      const { ingredients, cuisines } = req.body;
+      const { ingredients, cuisines, mealCategory } = req.body;
 
       if (!ingredients || !Array.isArray(ingredients) || ingredients.length === 0) {
         return res.status(400).json({ error: "Ingredients list is required" });
@@ -146,15 +146,31 @@ STRICT userHas rules — follow exactly:
 - Set userHas: false for ALL of these, even if common: rice, pasta, noodles, bread, tortillas, potatoes, beans, lentils, chickpeas, canned tomatoes, broth/stock, cheese, cream, yogurt, coconut milk, nuts, seeds, fresh herbs, lemons/limes, any fresh produce NOT in the user's list, and any specialty or store-bought ingredient.
 - When in doubt, set userHas: false. For macros, estimate realistic values per 1 serving (calories, protein in grams, carbs in grams, fat in grams, fiber in grams, servingWeightG as the total weight of 1 serving in grams).`;
 
+      const mealInstruction = mealCategory
+        ? (() => {
+            const examples: Record<string, string> = {
+              Breakfast: "eggs, pancakes, waffles, oatmeal, toast, smoothie bowls, French toast, breakfast burritos, frittatas, granola, muffins, bagels, crepes, shakshuka",
+              Lunch: "salads, sandwiches, wraps, soups, grain bowls, light pasta, quesadillas, poke bowls, mezze plates, noodle dishes",
+              Dinner: "hearty mains, roasts, stews, curries, pasta dishes, stir-fries, grills, casseroles, risotto, braised meats, sheet pan dinners",
+              Snacks: "dips, energy balls, crackers & toppings, skewers, small bites, bruschetta, deviled eggs, guacamole, hummus, cheese plates, mini sliders",
+            };
+            return `
+
+MEAL TYPE CONSTRAINT: ALL recipes MUST be appropriate for ${mealCategory}. Every recipe must be a dish people typically eat for ${mealCategory} (e.g. ${examples[mealCategory] ?? mealCategory}). Do NOT generate recipes for other meal times.`;
+          })()
+        : "";
+
+      const fullPreamble = sharedPreamble + mealInstruction;
+
       let promptA: string;
       let promptB: string;
 
       if (isLucky) {
-        promptA = `${sharedPreamble}
+        promptA = `${fullPreamble}
 
 Generate exactly 5 delicious recipes using ONLY lesser-known / underrepresented cuisines. Choose from: Brazilian, Peruvian, Ethiopian, Moroccan, Central European (Czech, Polish, Hungarian), Georgian, Uzbek, Sri Lankan, Filipino, Trinidadian, Jamaican, Venezuelan, Egyptian, Tunisian, Burmese, Laotian, Basque, Catalan, Sicilian, Levantine, Yemeni, Afghan, Congolese, Ghanaian, West African. Every recipe's "cuisine" field must accurately name the specific cuisine. Use IDs 1–5.`;
 
-        promptB = `${sharedPreamble}
+        promptB = `${fullPreamble}
 
 Generate exactly 5 delicious recipes using ONLY creative fusion cuisines. Choose from: Indo-Chinese, American-Japanese (Japanamerican), Malay-Indian (Mamak), Tex-Mex, Korean-Mexican, Vietnamese-French, Indian-Caribbean, Afro-Brazilian, Nikkei (Japanese-Peruvian), Chifa (Chinese-Peruvian), Hawaiian-Asian (Plate Lunch), British-Indian (Balti), Fusion-Mediterranean. Every recipe's "cuisine" field must accurately name the specific cuisine. Use IDs 6–10.`;
       } else {
@@ -171,11 +187,11 @@ RULE 3: Every recipe's "cuisine" field must reflect its actual cuisine.`;
             })()
           : `Generate a diverse mix of cuisines (Italian, Asian, Mexican, American, Indian, Mediterranean, and others). Do NOT repeat any cuisine from the other batch.`;
 
-        promptA = `${sharedPreamble}
+        promptA = `${fullPreamble}
 
 Generate exactly 5 delicious recipes. ${cuisineInstruction} Use IDs 1–5.`;
 
-        promptB = `${sharedPreamble}
+        promptB = `${fullPreamble}
 
 Generate exactly 5 delicious recipes. ${cuisineInstruction} Use IDs 6–10. Make sure these 5 recipes are DIFFERENT from what a typical first batch would generate — use different cuisines, cooking methods, and dish types.`;
       }

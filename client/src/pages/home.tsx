@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useDropzone } from "react-dropzone";
-import { Upload, X, Sparkles, Camera, Type, ArrowRight, Loader2, CheckCircle2, Globe, History, Clock, Trash2, Search } from "lucide-react";
+import { Upload, X, Sparkles, Camera, Type, ArrowRight, Loader2, CheckCircle2, Globe, History, Clock, Trash2, Search, Utensils } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -26,6 +26,13 @@ const CUISINES = [
   { label: "Chinese", emoji: "🇨🇳" },
   { label: "Greek", emoji: "🇬🇷" },
   { label: "Spanish", emoji: "🇪🇸" },
+];
+
+const MEAL_CATEGORIES = [
+  { label: "Breakfast", emoji: "🌅" },
+  { label: "Lunch", emoji: "🥗" },
+  { label: "Dinner", emoji: "🍽️" },
+  { label: "Snacks", emoji: "🍿" },
 ];
 
 type View = "input" | "ingredients" | "recipes" | "detail";
@@ -80,6 +87,7 @@ export default function Home() {
   const [customCuisineOpen, setCustomCuisineOpen] = useState(false);
   const [customCuisineText, setCustomCuisineText] = useState("");
   const customCuisineInputRef = useRef<HTMLInputElement>(null);
+  const [selectedMealCategory, setSelectedMealCategory] = useState<string | null>(null);
 
   const LUCKY = "__lucky__";
 
@@ -205,7 +213,7 @@ export default function Home() {
       const res = await fetch("/api/get-recipes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ingredients: identifiedIngredients, cuisines: selectedCuisines }),
+        body: JSON.stringify({ ingredients: identifiedIngredients, cuisines: selectedCuisines, mealCategory: selectedMealCategory }),
       });
 
       if (!res.ok) throw new Error("Failed to get recipes");
@@ -692,6 +700,52 @@ export default function Home() {
                       onClick={() => { setSelectedCuisines([]); setCustomCuisineOpen(false); setCustomCuisineText(""); }}
                       className="text-xs text-muted-foreground hover-elevate active-elevate-2 rounded px-1.5 py-0.5"
                       data-testid="button-clear-cuisines"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Meal Type preference */}
+              <div className="bg-card border border-card-border rounded-2xl p-6 shadow-sm">
+                <div className="flex items-center gap-2 mb-1">
+                  <Utensils className="w-4 h-4 text-primary" />
+                  <h3 className="font-semibold text-foreground text-sm">Meal Type</h3>
+                  <span className="text-xs text-muted-foreground ml-1">(optional)</span>
+                </div>
+                <p className="text-xs text-muted-foreground mb-4">
+                  Filter recipes by when you plan to eat — or leave it open for any meal.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {MEAL_CATEGORIES.map(({ label, emoji }) => {
+                    const active = selectedMealCategory === label;
+                    return (
+                      <button
+                        key={label}
+                        onClick={() => setSelectedMealCategory(active ? null : label)}
+                        data-testid={`button-meal-${label.toLowerCase()}`}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium border transition-all hover-elevate active-elevate-2 ${
+                          active
+                            ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                            : "bg-muted text-muted-foreground border-border hover:border-primary/50 hover:text-foreground"
+                        }`}
+                      >
+                        <span>{emoji}</span>
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+                {selectedMealCategory && (
+                  <div className="mt-3 pt-3 border-t border-border flex items-center justify-between gap-2">
+                    <p className="text-xs text-muted-foreground">
+                      Showing <span className="font-medium text-foreground">{selectedMealCategory}</span> recipes only
+                    </p>
+                    <button
+                      onClick={() => setSelectedMealCategory(null)}
+                      className="text-xs text-muted-foreground hover-elevate active-elevate-2 rounded px-1.5 py-0.5"
+                      data-testid="button-clear-meal"
                     >
                       Clear
                     </button>
