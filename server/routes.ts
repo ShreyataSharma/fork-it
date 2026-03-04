@@ -181,7 +181,7 @@ STRICT userHas rules — follow exactly:
       const parsed = JSON.parse(content);
 
       // Post-processing: filter out recipes that don't match selected cuisines or their fallbacks
-      if (Array.isArray(cuisines) && cuisines.length > 0 && Array.isArray(parsed.recipes)) {
+      if (!isLucky && Array.isArray(cuisines) && cuisines.length > 0 && Array.isArray(parsed.recipes)) {
         const fallbacks = [...new Set(cuisines.flatMap((c: string) => similarCuisines[c] || []))];
         const allowedSet = [...cuisines.map((c: string) => c.toLowerCase()), ...fallbacks.map((f: string) => f.toLowerCase())];
         const filtered = parsed.recipes.filter((r: any) => {
