@@ -188,9 +188,9 @@ function getConversion(rawAmount: string, scale: number): string | null {
 // ── Nutrition chart ──────────────────────────────────────────────────────────
 
 const MACRO_META = [
-  { key: "protein" as const, label: "Protein", cal: 4,  color: "bg-blue-500",  track: "bg-blue-100",  text: "text-blue-700"  },
-  { key: "carbs"   as const, label: "Carbs",   cal: 4,  color: "bg-amber-500", track: "bg-amber-100", text: "text-amber-700" },
-  { key: "fat"     as const, label: "Fat",     cal: 9,  color: "bg-rose-500",  track: "bg-rose-100",  text: "text-rose-700"  },
+  { key: "protein" as const, label: "Protein", cal: 4,  color: "bg-blue-300",   track: "bg-blue-100",   text: "text-blue-500"   },
+  { key: "carbs"   as const, label: "Carbs",   cal: 4,  color: "bg-yellow-300", track: "bg-yellow-100", text: "text-yellow-600" },
+  { key: "fat"     as const, label: "Fat",     cal: 9,  color: "bg-red-300",    track: "bg-red-100",    text: "text-red-500"    },
 ];
 
 function fmtCal(n: number) {
