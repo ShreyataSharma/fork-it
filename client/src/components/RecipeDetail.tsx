@@ -418,9 +418,6 @@ export default function RecipeDetail({ recipe, onBack }: Props) {
                       </span>
                       <span className="text-xs text-muted-foreground" data-testid={`text-ingredient-amount-${idx}`}>
                         {scaleAmount(ing.amount, scale)}
-                        {scale !== 1 && (
-                          <span className="text-muted-foreground/50 ml-1">(orig: {ing.amount})</span>
-                        )}
                       </span>
                     </div>
 
