@@ -101,33 +101,9 @@ export async function registerRoutes(
 
       const isLucky = Array.isArray(cuisines) && cuisines.includes("__lucky__");
 
-      const cuisineInstruction = isLucky
-        ? `LUCKY MIX — the user wants a surprise. Generate all 10 recipes using a creative mix of:
-1. Lesser-known / underrepresented cuisines — choose from: Brazilian, Peruvian, Ethiopian, Moroccan, Central European (Czech, Polish, Hungarian), Georgian, Uzbek, Sri Lankan, Filipino, Trinidadian, Jamaican, Venezuelan, Egyptian, Tunisian, Burmese, Laotian, Basque, Catalan, Sicilian, Levantine, Yemeni, Afghan, Congolese, Ghanaian, West African
-2. Creative fusion cuisines — choose from: Indo-Chinese, American-Japanese (Japanamerican), Malay-Indian (Mamak), Tex-Mex, Korean-Mexican, Vietnamese-French, Indian-Caribbean, Afro-Brazilian, Nikkei (Japanese-Peruvian), Chifa (Chinese-Peruvian), Hawaiian-Asian (Plate Lunch), British-Indian (Balti), Fusion-Mediterranean
+      const sharedPreamble = `You are a world-class chef. Based on these main ingredients the user has: ${ingredients.join(", ")}
 
-Spread the 10 recipes across a mix of BOTH categories (at least 4 from lesser-known, at least 4 from fusion, the rest your creative choice). Every recipe's "cuisine" field must accurately name the specific cuisine (e.g. "Brazilian", "Indo-Chinese", "Nikkei").`
-        : Array.isArray(cuisines) && cuisines.length > 0
-        ? (() => {
-            const fallbacks = [...new Set(cuisines.flatMap(c => similarCuisines[c] || []))].filter(f => !cuisines.includes(f));
-            return `CUISINE CONSTRAINT — follow these rules in order, no exceptions:
-
-SELECTED CUISINES: ${cuisines.join(", ")}
-
-RULE 1: Generate as many recipes as possible using ONLY the selected cuisines above. Spread them evenly across the selections.
-RULE 2: If you reach 10 recipes using only the selected cuisines, STOP — do not add any other cuisine. Return exactly those 10.
-RULE 3: Only if you cannot reach 10 recipes from the selected cuisines alone, fill the remaining slots using ONLY these similar cuisines: ${fallbacks.length > 0 ? fallbacks.join(", ") : "the closest culturally related cuisines"}. Never use cuisines unrelated to the selection.
-RULE 4: Every recipe's "cuisine" field must reflect its actual cuisine — do not label a recipe with a selected cuisine if it belongs to a fallback cuisine.
-
-VIOLATION CHECK: Before returning, verify every recipe belongs to either a selected cuisine or an approved fallback. Remove and replace any that do not.`;
-          })()
-        : `Generate a diverse mix of cuisines (Italian, Asian, Mexican, American, Indian, Mediterranean, and others).`;
-
-      const prompt = `You are a world-class chef. Based on these main ingredients the user has: ${ingredients.join(", ")}
-
-Generate exactly 10 delicious recipes. Assume the user has these standard pantry staples ONLY: salt, black pepper, olive oil, vegetable oil, butter, garlic, onions, basic dry spices (cumin, coriander, turmeric, paprika, chili powder, oregano, cinnamon, garam masala, etc.), soy sauce, vinegar, flour, cornstarch, sugar, baking soda, baking powder, eggs, milk, common condiments (ketchup, mustard, hot sauce).
-
-${cuisineInstruction}
+Assume the user has these standard pantry staples ONLY: salt, black pepper, olive oil, vegetable oil, butter, garlic, onions, basic dry spices (cumin, coriander, turmeric, paprika, chili powder, oregano, cinnamon, garam masala, etc.), soy sauce, vinegar, flour, cornstarch, sugar, baking soda, baking powder, eggs, milk, common condiments (ketchup, mustard, hot sauce).
 
 For each recipe, respond in this EXACT JSON format:
 {
@@ -170,15 +146,77 @@ STRICT userHas rules — follow exactly:
 - Set userHas: false for ALL of these, even if common: rice, pasta, noodles, bread, tortillas, potatoes, beans, lentils, chickpeas, canned tomatoes, broth/stock, cheese, cream, yogurt, coconut milk, nuts, seeds, fresh herbs, lemons/limes, any fresh produce NOT in the user's list, and any specialty or store-bought ingredient.
 - When in doubt, set userHas: false. For macros, estimate realistic values per 1 serving (calories, protein in grams, carbs in grams, fat in grams, fiber in grams, servingWeightG as the total weight of 1 serving in grams).`;
 
-      const response = await openai.chat.completions.create({
-        model: "gpt-5.2",
-        messages: [{ role: "user", content: prompt }],
-        response_format: { type: "json_object" },
-        max_completion_tokens: 8192,
-      });
+      let promptA: string;
+      let promptB: string;
 
-      const content = response.choices[0]?.message?.content || "{}";
-      const parsed = JSON.parse(content);
+      if (isLucky) {
+        promptA = `${sharedPreamble}
+
+Generate exactly 5 delicious recipes using ONLY lesser-known / underrepresented cuisines. Choose from: Brazilian, Peruvian, Ethiopian, Moroccan, Central European (Czech, Polish, Hungarian), Georgian, Uzbek, Sri Lankan, Filipino, Trinidadian, Jamaican, Venezuelan, Egyptian, Tunisian, Burmese, Laotian, Basque, Catalan, Sicilian, Levantine, Yemeni, Afghan, Congolese, Ghanaian, West African. Every recipe's "cuisine" field must accurately name the specific cuisine. Use IDs 1–5.`;
+
+        promptB = `${sharedPreamble}
+
+Generate exactly 5 delicious recipes using ONLY creative fusion cuisines. Choose from: Indo-Chinese, American-Japanese (Japanamerican), Malay-Indian (Mamak), Tex-Mex, Korean-Mexican, Vietnamese-French, Indian-Caribbean, Afro-Brazilian, Nikkei (Japanese-Peruvian), Chifa (Chinese-Peruvian), Hawaiian-Asian (Plate Lunch), British-Indian (Balti), Fusion-Mediterranean. Every recipe's "cuisine" field must accurately name the specific cuisine. Use IDs 6–10.`;
+      } else {
+        const cuisineInstruction = Array.isArray(cuisines) && cuisines.length > 0
+          ? (() => {
+              const fallbacks = [...new Set(cuisines.flatMap(c => similarCuisines[c] || []))].filter(f => !cuisines.includes(f));
+              return `CUISINE CONSTRAINT — follow these rules in order, no exceptions:
+
+SELECTED CUISINES: ${cuisines.join(", ")}
+
+RULE 1: Generate recipes using ONLY the selected cuisines above. Spread them evenly across the selections.
+RULE 2: Only if you cannot fill all 5 slots from the selected cuisines alone, use ONLY these similar cuisines: ${fallbacks.length > 0 ? fallbacks.join(", ") : "the closest culturally related cuisines"}.
+RULE 3: Every recipe's "cuisine" field must reflect its actual cuisine.`;
+            })()
+          : `Generate a diverse mix of cuisines (Italian, Asian, Mexican, American, Indian, Mediterranean, and others). Do NOT repeat any cuisine from the other batch.`;
+
+        promptA = `${sharedPreamble}
+
+Generate exactly 5 delicious recipes. ${cuisineInstruction} Use IDs 1–5.`;
+
+        promptB = `${sharedPreamble}
+
+Generate exactly 5 delicious recipes. ${cuisineInstruction} Use IDs 6–10. Make sure these 5 recipes are DIFFERENT from what a typical first batch would generate — use different cuisines, cooking methods, and dish types.`;
+      }
+
+      const totalStart = Date.now();
+
+      const [responseA, responseB] = await Promise.all([
+        (async () => {
+          const t = Date.now();
+          const r = await openai.chat.completions.create({
+            model: "gpt-5.2",
+            messages: [{ role: "user", content: promptA }],
+            response_format: { type: "json_object" },
+            max_completion_tokens: 4500,
+          });
+          console.log(`[batch-A] done in ${Date.now() - t}ms`);
+          return r;
+        })(),
+        (async () => {
+          const t = Date.now();
+          const r = await openai.chat.completions.create({
+            model: "gpt-5.2",
+            messages: [{ role: "user", content: promptB }],
+            response_format: { type: "json_object" },
+            max_completion_tokens: 4500,
+          });
+          console.log(`[batch-B] done in ${Date.now() - t}ms`);
+          return r;
+        })(),
+      ]);
+
+      console.log(`[get-recipes] total ${Date.now() - totalStart}ms`);
+
+      const parsedA = JSON.parse(responseA.choices[0]?.message?.content || "{}");
+      const parsedB = JSON.parse(responseB.choices[0]?.message?.content || "{}");
+
+      const recipesA: any[] = Array.isArray(parsedA.recipes) ? parsedA.recipes : [];
+      const recipesB: any[] = Array.isArray(parsedB.recipes) ? parsedB.recipes : [];
+
+      const combined = [...recipesA, ...recipesB].map((r, i) => ({ ...r, id: i + 1 }));
+      const parsed = { recipes: combined };
 
       // Post-processing: filter out recipes that don't match selected cuisines or their fallbacks
       if (!isLucky && Array.isArray(cuisines) && cuisines.length > 0 && Array.isArray(parsed.recipes)) {
