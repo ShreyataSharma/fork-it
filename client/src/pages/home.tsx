@@ -34,6 +34,13 @@ export interface RecipeIngredient {
   userHas: boolean;
 }
 
+export interface RecipeMacros {
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+}
+
 export interface Recipe {
   id: number;
   name: string;
@@ -47,6 +54,7 @@ export interface Recipe {
   allIngredients: RecipeIngredient[];
   steps: string[];
   tags: string[];
+  macros?: RecipeMacros;
 }
 
 export default function Home() {

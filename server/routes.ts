@@ -142,12 +142,18 @@ For each recipe, respond in this EXACT JSON format:
         "Step 1: ...",
         "Step 2: ..."
       ],
-      "tags": ["Quick", "Healthy", "Comfort Food"]
+      "tags": ["Quick", "Healthy", "Comfort Food"],
+      "macros": {
+        "calories": 420,
+        "protein": 32,
+        "carbs": 38,
+        "fat": 12
+      }
     }
   ]
 }
 
-Make recipes varied in cooking methods and difficulty levels. Set userHas to true if the ingredient is in the user's list or is a common pantry staple. Set to false for specialty ingredients they may not have.`;
+Make recipes varied in cooking methods and difficulty levels. Set userHas to true if the ingredient is in the user's list or is a common pantry staple. Set to false for specialty ingredients they may not have. For macros, estimate realistic values per 1 serving (calories, protein in grams, carbs in grams, fat in grams).`;
 
       const response = await openai.chat.completions.create({
         model: "gpt-5.2",

@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import type { Recipe, RecipeIngredient } from "@/pages/home";
+import type { Recipe, RecipeIngredient, RecipeMacros } from "@/pages/home";
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -183,6 +183,121 @@ function getConversion(rawAmount: string, scale: number): string | null {
   if (firstWord in WEIGHT_MET) return fmtImpWeight(scaledNum * WEIGHT_MET[firstWord]);
 
   return null;
+}
+
+// ── Nutrition chart ──────────────────────────────────────────────────────────
+
+const MACRO_META = [
+  { key: "protein" as const, label: "Protein", cal: 4,  color: "bg-blue-500",  track: "bg-blue-100",  text: "text-blue-700"  },
+  { key: "carbs"   as const, label: "Carbs",   cal: 4,  color: "bg-amber-500", track: "bg-amber-100", text: "text-amber-700" },
+  { key: "fat"     as const, label: "Fat",     cal: 9,  color: "bg-rose-500",  track: "bg-rose-100",  text: "text-rose-700"  },
+];
+
+function fmtCal(n: number) {
+  return n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(Math.round(n));
+}
+
+function NutritionChart({ macros, defaultServings }: { macros: RecipeMacros; defaultServings: number }) {
+  const singleCal = macros.calories;
+  const totalCal  = macros.calories * defaultServings;
+
+  const singleMacroCals = MACRO_META.map(m => macros[m.key] * m.cal);
+  const totalSingleCal  = singleMacroCals.reduce((a, b) => a + b, 0) || 1;
+
+  return (
+    <div className="bg-card border border-card-border rounded-2xl p-6 shadow-sm" data-testid="nutrition-chart">
+      <h2 className="font-bold text-lg text-foreground mb-4">Nutrition Estimate</h2>
+
+      {/* Stacked calorie bar — 1 serving */}
+      <div className="mb-5">
+        <p className="text-xs text-muted-foreground mb-1.5">Calorie breakdown · 1 serving</p>
+        <div className="flex h-4 rounded-full overflow-hidden w-full gap-0.5">
+          {MACRO_META.map((m, i) => {
+            const pct = (singleMacroCals[i] / totalSingleCal) * 100;
+            return (
+              <div
+                key={m.key}
+                className={`${m.color} transition-all`}
+                style={{ width: `${pct}%` }}
+                title={`${m.label}: ${pct.toFixed(0)}%`}
+              />
+            );
+          })}
+        </div>
+        <div className="flex gap-4 mt-1.5">
+          {MACRO_META.map(m => (
+            <span key={m.key} className={`flex items-center gap-1 text-xs ${m.text}`}>
+              <span className={`w-2 h-2 rounded-full ${m.color} inline-block`} />
+              {m.label}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      {/* Comparison table */}
+      <div className="grid grid-cols-3 gap-3">
+        {/* Column headers */}
+        <div />
+        <div className="text-center">
+          <p className="text-xs font-semibold text-foreground">1 serving</p>
+        </div>
+        <div className="text-center">
+          <p className="text-xs font-semibold text-foreground">
+            {defaultServings > 1 ? `Default (${defaultServings} servings)` : "Default"}
+          </p>
+        </div>
+
+        {/* Total calories row */}
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs font-semibold text-foreground">Calories</span>
+        </div>
+        <div className="text-center">
+          <span className="text-sm font-bold text-foreground" data-testid="text-calories-single">{fmtCal(singleCal)}</span>
+          <span className="text-xs text-muted-foreground ml-0.5">kcal</span>
+        </div>
+        <div className="text-center">
+          <span className="text-sm font-bold text-foreground" data-testid="text-calories-total">{fmtCal(totalCal)}</span>
+          <span className="text-xs text-muted-foreground ml-0.5">kcal</span>
+        </div>
+
+        {/* Macro rows */}
+        {MACRO_META.map((m) => {
+          const singleG   = macros[m.key];
+          const singleC   = singleG * m.cal;
+          const defaultG  = singleG * defaultServings;
+          const defaultC  = singleC * defaultServings;
+          const pct       = (singleC / totalSingleCal) * 100;
+
+          return [
+            <div key={`${m.key}-label`} className="flex items-center gap-1.5">
+              <span className={`w-2 h-2 rounded-full ${m.color} flex-shrink-0`} />
+              <span className="text-xs text-muted-foreground">{m.label}</span>
+            </div>,
+
+            <div key={`${m.key}-single`} className="text-center">
+              <div className="text-xs text-foreground font-medium">{singleG}g</div>
+              <div className={`h-1.5 rounded-full ${m.track} mt-1 mx-auto w-full`}>
+                <div className={`h-full rounded-full ${m.color}`} style={{ width: `${pct}%` }} />
+              </div>
+              <div className="text-xs text-muted-foreground mt-0.5">{fmtCal(singleC)} cal</div>
+            </div>,
+
+            <div key={`${m.key}-default`} className="text-center">
+              <div className="text-xs text-foreground font-medium">{defaultG}g</div>
+              <div className={`h-1.5 rounded-full ${m.track} mt-1 mx-auto w-full`}>
+                <div className={`h-full rounded-full ${m.color}`} style={{ width: `${pct}%` }} />
+              </div>
+              <div className="text-xs text-muted-foreground mt-0.5">{fmtCal(defaultC)} cal</div>
+            </div>,
+          ];
+        })}
+      </div>
+
+      <p className="text-xs text-muted-foreground/60 mt-4 italic">
+        Estimates only — actual values vary by exact ingredients and preparation.
+      </p>
+    </div>
+  );
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -412,6 +527,9 @@ export default function RecipeDetail({ recipe, onBack }: Props) {
           </div>
         </div>
       </div>
+
+      {/* Nutrition Chart */}
+      {recipe.macros && <NutritionChart macros={recipe.macros} defaultServings={recipe.servings} />}
 
       <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
         {/* Ingredients */}
