@@ -83,7 +83,7 @@ export async function registerRoutes(
       }
 
       const cuisineInstruction = Array.isArray(cuisines) && cuisines.length > 0
-        ? `The user prefers these cuisines: ${cuisines.join(", ")}. Lean the 10 recipes heavily toward these cuisines — at least 8 of the 10 recipes should belong to one of these cuisines. You may occasionally blend styles or include 1-2 variations, but the focus should be on the preferred cuisines.`
+        ? `The user has selected these cuisines: ${cuisines.join(", ")}. ALL 10 recipes MUST come exclusively from these cuisines. Spread the recipes across the selected cuisines as evenly as possible. Only if it is genuinely impossible to generate 10 distinct, quality recipes from the selected cuisines alone (e.g. only one very narrow cuisine was chosen), may you fill the remaining slots with recipes from closely related or neighbouring cuisines — and in that case, set the "cuisine" field to the actual cuisine of that recipe so the user knows. Never pad with unrelated cuisines.`
         : `Generate a diverse mix of cuisines (Italian, Asian, Mexican, American, Indian, Mediterranean, and others).`;
 
       const prompt = `You are a world-class chef. Based on these main ingredients the user has: ${ingredients.join(", ")}
