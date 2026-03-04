@@ -44,26 +44,29 @@ function stripMarkdown(text: string): string {
     .trim();
 }
 
-const BASIC_INGREDIENTS = new Set([
-  "water", "salt", "pepper", "black pepper", "white pepper",
-  "sugar", "brown sugar", "oil", "olive oil", "vegetable oil", "cooking oil", "canola oil",
-  "butter", "flour", "all-purpose flour", "baking powder", "baking soda",
-  "ice", "ice water", "tap water",
-]);
+const ALWAYS_SKIP = [
+  "salt", "pepper", "black pepper", "white pepper", "sea salt", "kosher salt",
+  "water", "ice", "ice water", "tap water",
+];
 
-function isBasicIngredient(name: string): boolean {
+function isAlwaysSkip(name: string): boolean {
   const lower = name.toLowerCase().trim();
-  for (const basic of BASIC_INGREDIENTS) {
-    if (lower === basic || lower.includes(basic) && lower.length < basic.length + 8) {
-      return true;
-    }
-  }
-  return false;
+  if (lower.includes("oil")) return true;
+  return ALWAYS_SKIP.some((s) => lower === s || lower.startsWith(s + " ") || lower.endsWith(" " + s));
 }
 
-function canSubstitute(ing: RecipeIngredient): boolean {
-  if (ing.userHas) return false;
-  if (isBasicIngredient(ing.name)) return false;
+function isUserIngredient(name: string, mainIngredients: string[] | undefined): boolean {
+  if (!Array.isArray(mainIngredients)) return false;
+  const lower = name.toLowerCase();
+  return mainIngredients.some((main) => {
+    const m = main.toLowerCase();
+    return lower === m || lower.includes(m) || m.includes(lower.split(/[\s,(]/)[0]);
+  });
+}
+
+function canSubstitute(ing: RecipeIngredient, mainIngredients: string[] | undefined): boolean {
+  if (isAlwaysSkip(ing.name)) return false;
+  if (isUserIngredient(ing.name, mainIngredients)) return false;
   return true;
 }
 
@@ -76,7 +79,7 @@ export default function RecipeDetail({ recipe, onBack }: Props) {
   const chatEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const substitutableIngredients = recipe.allIngredients.filter(canSubstitute);
+  const substitutableIngredients = recipe.allIngredients.filter((ing) => canSubstitute(ing, recipe.mainIngredients));
 
   useEffect(() => {
     if (chatEndRef.current) {
@@ -276,22 +279,23 @@ export default function RecipeDetail({ recipe, onBack }: Props) {
 
             <div className="space-y-2">
               {recipe.allIngredients.map((ing, idx) => {
-                const substitutable = canSubstitute(ing);
+                const substitutable = canSubstitute(ing, recipe.mainIngredients);
                 const isSelected = selectedIngredients.has(ing.name);
+                const isOwn = isUserIngredient(ing.name, recipe.mainIngredients);
+                const isSkip = isAlwaysSkip(ing.name);
+
+                let rowClass = "bg-muted/40";
+                if (isSelected) rowClass = "bg-primary/10 border border-primary/30";
+                else if (isOwn) rowClass = "bg-green-50 border border-green-100";
+                else if (!isSkip && !ing.userHas) rowClass = "bg-amber-50 border border-amber-100";
 
                 return (
                   <div
                     key={idx}
-                    className={`flex items-center gap-3 p-2.5 rounded-lg transition-colors ${
-                      isSelected
-                        ? "bg-primary/10 border border-primary/30"
-                        : ing.userHas
-                        ? "bg-muted/40"
-                        : "bg-amber-50 border border-amber-100"
-                    }`}
+                    className={`flex items-center gap-3 p-2.5 rounded-lg transition-colors ${rowClass}`}
                     data-testid={`row-ingredient-${idx}`}
                   >
-                    {/* Checkbox for substitutable items */}
+                    {/* Checkbox for substitutable items, lock for user's own, dot for basics */}
                     {substitutable ? (
                       <button
                         onClick={() => toggleIngredient(ing.name)}
@@ -307,7 +311,7 @@ export default function RecipeDetail({ recipe, onBack }: Props) {
                       </button>
                     ) : (
                       <CheckCircle2
-                        className={`w-5 h-5 flex-shrink-0 ${ing.userHas ? "text-green-500" : "text-muted-foreground/30"}`}
+                        className={`w-5 h-5 flex-shrink-0 ${isOwn ? "text-green-500" : "text-muted-foreground/25"}`}
                       />
                     )}
 
@@ -315,11 +319,15 @@ export default function RecipeDetail({ recipe, onBack }: Props) {
                     <div className="min-w-0 flex-1">
                       <span
                         className={`text-sm font-medium block ${
-                          isSelected ? "text-primary" : ing.userHas ? "text-foreground" : "text-amber-800"
+                          isSelected ? "text-primary"
+                          : isOwn ? "text-green-800"
+                          : !ing.userHas && !isSkip ? "text-amber-800"
+                          : "text-foreground"
                         }`}
                         data-testid={`text-ingredient-name-${idx}`}
                       >
                         {ing.name}
+                        {isOwn && <span className="ml-1.5 text-xs font-normal text-green-600">(your ingredient)</span>}
                       </span>
                       <span className="text-xs text-muted-foreground" data-testid={`text-ingredient-amount-${idx}`}>
                         {ing.amount}
@@ -333,7 +341,9 @@ export default function RecipeDetail({ recipe, onBack }: Props) {
                         className={`text-xs px-2 py-1 rounded-md flex-shrink-0 hover-elevate active-elevate-2 transition-colors ${
                           isSelected
                             ? "bg-primary/20 text-primary"
-                            : "bg-amber-100 text-amber-800"
+                            : !ing.userHas
+                            ? "bg-amber-100 text-amber-800"
+                            : "bg-muted text-muted-foreground"
                         }`}
                         data-testid={`button-substitute-${idx}`}
                       >
