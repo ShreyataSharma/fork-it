@@ -632,7 +632,6 @@ export default function RecipeDetail({ recipe, onBack }: Props) {
                         data-testid={`text-ingredient-name-${idx}`}
                       >
                         {ing.name}
-                        {isOwn && <span className="ml-1.5 text-xs font-normal text-green-600">(your ingredient)</span>}
                       </span>
                       <span className="text-xs text-muted-foreground" data-testid={`text-ingredient-amount-${idx}`}>
                         {scaleAmount(ing.amount, scale)}
