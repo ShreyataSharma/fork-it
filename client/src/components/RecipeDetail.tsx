@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Clock, Flame, Users, ChefHat, CheckCircle2, XCircle, ArrowLeft, MessageSquare, Send, Loader2, X } from "lucide-react";
+import { Clock, Flame, Users, ChefHat, CheckCircle2, ArrowLeft, MessageSquare, Send, Loader2, X, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -24,16 +24,39 @@ const difficultyColors: Record<string, string> = {
   Hard: "bg-red-100 text-red-700 border-red-200",
 };
 
+const BASIC_INGREDIENTS = new Set([
+  "water", "salt", "pepper", "black pepper", "white pepper",
+  "sugar", "brown sugar", "oil", "olive oil", "vegetable oil", "cooking oil", "canola oil",
+  "butter", "flour", "all-purpose flour", "baking powder", "baking soda",
+  "ice", "ice water", "tap water",
+]);
+
+function isBasicIngredient(name: string): boolean {
+  const lower = name.toLowerCase().trim();
+  for (const basic of BASIC_INGREDIENTS) {
+    if (lower === basic || lower.includes(basic) && lower.length < basic.length + 8) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function canSubstitute(ing: RecipeIngredient): boolean {
+  if (ing.userHas) return false;
+  if (isBasicIngredient(ing.name)) return false;
+  return true;
+}
+
 export default function RecipeDetail({ recipe, onBack }: Props) {
   const [chatOpen, setChatOpen] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
-  const [activeIngredient, setActiveIngredient] = useState<string | null>(null);
+  const [selectedIngredients, setSelectedIngredients] = useState<Set<string>>(new Set());
   const chatEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const missingIngredients = recipe.allIngredients.filter((ing) => !ing.userHas);
+  const substitutableIngredients = recipe.allIngredients.filter(canSubstitute);
 
   useEffect(() => {
     if (chatEndRef.current) {
@@ -41,30 +64,33 @@ export default function RecipeDetail({ recipe, onBack }: Props) {
     }
   }, [chatMessages]);
 
-  const askSubstitution = async (ingredient?: RecipeIngredient) => {
-    const ing = ingredient?.name || activeIngredient;
-    if (!ing && !chatInput.trim()) return;
+  const toggleIngredient = (name: string) => {
+    setSelectedIngredients((prev) => {
+      const next = new Set(prev);
+      if (next.has(name)) {
+        next.delete(name);
+      } else {
+        next.add(name);
+      }
+      return next;
+    });
+  };
 
-    setChatOpen(true);
-
-    const userMessage = ingredient
-      ? `What can I substitute for ${ingredient.name} (${ingredient.amount}) in this recipe?`
-      : chatInput.trim();
-
+  const streamSubstitution = async (userMessage: string, historyMessages: ChatMessage[]) => {
     const newUserMsg: ChatMessage = { role: "user", content: userMessage };
-    const newMessages = [...chatMessages, newUserMsg];
+    const newMessages = [...historyMessages, newUserMsg];
     setChatMessages(newMessages);
     setChatInput("");
     setIsStreaming(true);
+    setChatOpen(true);
 
     try {
       const res = await fetch("/api/substitution", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ingredient: ingredient?.name,
           recipe: recipe.name,
-          context: ingredient ? undefined : userMessage,
+          context: userMessage,
           messages: newMessages.map((m) => ({ role: m.role, content: m.content })),
         }),
       });
@@ -76,8 +102,7 @@ export default function RecipeDetail({ recipe, onBack }: Props) {
       let buffer = "";
       let assistantContent = "";
 
-      const assistantMsg: ChatMessage = { role: "assistant", content: "" };
-      setChatMessages((prev) => [...prev, assistantMsg]);
+      setChatMessages((prev) => [...prev, { role: "assistant", content: "" }]);
 
       while (reader) {
         const { done, value } = await reader.read();
@@ -112,9 +137,26 @@ export default function RecipeDetail({ recipe, onBack }: Props) {
     }
   };
 
+  const askSingleSubstitute = (ing: RecipeIngredient) => {
+    const msg = `I don't have ${ing.name} (${ing.amount}). What can I substitute for it in this recipe?`;
+    streamSubstitution(msg, chatMessages);
+  };
+
+  const askSelectedSubstitutes = () => {
+    if (selectedIngredients.size === 0) return;
+    const selected = recipe.allIngredients.filter((ing) => selectedIngredients.has(ing.name));
+    const list = selected.map((ing) => `${ing.name} (${ing.amount})`).join(", ");
+    const msg =
+      selected.length === 1
+        ? `I don't have ${list}. What can I substitute for it?`
+        : `I don't have these ingredients: ${list}. Can you suggest substitutes for each of them?`;
+    streamSubstitution(msg, chatMessages);
+    setSelectedIngredients(new Set());
+  };
+
   const handleSendMessage = async () => {
     if (!chatInput.trim() || isStreaming) return;
-    await askSubstitution();
+    await streamSubstitution(chatInput.trim(), chatMessages);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -125,7 +167,7 @@ export default function RecipeDetail({ recipe, onBack }: Props) {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-28">
       {/* Header */}
       <div className="bg-card border border-card-border rounded-2xl p-6 shadow-sm">
         <button
@@ -140,11 +182,7 @@ export default function RecipeDetail({ recipe, onBack }: Props) {
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div className="flex-1">
             <div className="flex flex-wrap gap-2 mb-2">
-              <Badge
-                variant="outline"
-                className={`${difficultyColors[recipe.difficulty] || ""}`}
-                data-testid="badge-recipe-difficulty"
-              >
+              <Badge variant="outline" className={difficultyColors[recipe.difficulty] || ""} data-testid="badge-recipe-difficulty">
                 {recipe.difficulty}
               </Badge>
               <Badge variant="outline" className="text-muted-foreground" data-testid="badge-recipe-cuisine">
@@ -168,7 +206,6 @@ export default function RecipeDetail({ recipe, onBack }: Props) {
           </div>
         </div>
 
-        {/* Stats row */}
         <div className="flex flex-wrap gap-6 mt-5 pt-5 border-t border-border">
           <div className="flex items-center gap-2" data-testid="text-detail-prep">
             <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center">
@@ -204,66 +241,129 @@ export default function RecipeDetail({ recipe, onBack }: Props) {
         {/* Ingredients */}
         <div className="md:col-span-2">
           <div className="bg-card border border-card-border rounded-2xl p-6 shadow-sm">
-            <h2 className="font-bold text-lg text-foreground mb-4">Ingredients</h2>
+            <div className="flex items-center justify-between gap-2 mb-1">
+              <h2 className="font-bold text-lg text-foreground">Ingredients</h2>
+              {substitutableIngredients.length > 0 && (
+                <span className="text-xs text-muted-foreground">Tick what you're missing</span>
+              )}
+            </div>
+
+            {substitutableIngredients.length > 0 && (
+              <p className="text-xs text-muted-foreground mb-3">
+                Select ingredients below or click "Substitute?" on any one to ask the AI for alternatives.
+              </p>
+            )}
+
             <div className="space-y-2">
-              {recipe.allIngredients.map((ing, idx) => (
-                <div
-                  key={idx}
-                  className={`flex items-center justify-between gap-3 p-2.5 rounded-lg transition-colors ${
-                    !ing.userHas ? "bg-red-50 border border-red-100" : "bg-muted/40"
-                  }`}
-                  data-testid={`row-ingredient-${idx}`}
-                >
-                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                    {ing.userHas ? (
-                      <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0" />
+              {recipe.allIngredients.map((ing, idx) => {
+                const substitutable = canSubstitute(ing);
+                const isSelected = selectedIngredients.has(ing.name);
+
+                return (
+                  <div
+                    key={idx}
+                    className={`flex items-center gap-3 p-2.5 rounded-lg transition-colors ${
+                      isSelected
+                        ? "bg-primary/10 border border-primary/30"
+                        : ing.userHas
+                        ? "bg-muted/40"
+                        : "bg-amber-50 border border-amber-100"
+                    }`}
+                    data-testid={`row-ingredient-${idx}`}
+                  >
+                    {/* Checkbox for substitutable items */}
+                    {substitutable ? (
+                      <button
+                        onClick={() => toggleIngredient(ing.name)}
+                        className={`w-5 h-5 rounded flex items-center justify-center flex-shrink-0 border-2 transition-colors ${
+                          isSelected
+                            ? "bg-primary border-primary"
+                            : "border-muted-foreground/40 hover:border-primary"
+                        }`}
+                        data-testid={`checkbox-ingredient-${idx}`}
+                        aria-label={`Select ${ing.name} for substitution`}
+                      >
+                        {isSelected && <CheckCircle2 className="w-3.5 h-3.5 text-primary-foreground" />}
+                      </button>
                     ) : (
-                      <XCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
+                      <CheckCircle2
+                        className={`w-5 h-5 flex-shrink-0 ${ing.userHas ? "text-green-500" : "text-muted-foreground/30"}`}
+                      />
                     )}
-                    <div className="min-w-0">
-                      <span className={`text-sm font-medium block ${!ing.userHas ? "text-red-700" : "text-foreground"}`} data-testid={`text-ingredient-name-${idx}`}>
+
+                    {/* Name + amount */}
+                    <div className="min-w-0 flex-1">
+                      <span
+                        className={`text-sm font-medium block ${
+                          isSelected ? "text-primary" : ing.userHas ? "text-foreground" : "text-amber-800"
+                        }`}
+                        data-testid={`text-ingredient-name-${idx}`}
+                      >
                         {ing.name}
                       </span>
                       <span className="text-xs text-muted-foreground" data-testid={`text-ingredient-amount-${idx}`}>
                         {ing.amount}
                       </span>
                     </div>
+
+                    {/* Single substitute button */}
+                    {substitutable && (
+                      <button
+                        onClick={() => askSingleSubstitute(ing)}
+                        className={`text-xs px-2 py-1 rounded-md flex-shrink-0 hover-elevate active-elevate-2 transition-colors ${
+                          isSelected
+                            ? "bg-primary/20 text-primary"
+                            : "bg-amber-100 text-amber-800"
+                        }`}
+                        data-testid={`button-substitute-${idx}`}
+                      >
+                        Substitute?
+                      </button>
+                    )}
                   </div>
-                  {!ing.userHas && (
+                );
+              })}
+            </div>
+
+            {/* Multi-select action */}
+            {substitutableIngredients.length > 0 && (
+              <div className="mt-4 pt-4 border-t border-border space-y-2">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <p className="text-xs text-muted-foreground">
+                    {selectedIngredients.size > 0
+                      ? `${selectedIngredients.size} ingredient${selectedIngredients.size !== 1 ? "s" : ""} selected`
+                      : "Or ask about all missing at once"}
+                  </p>
+                  {selectedIngredients.size > 0 && (
                     <button
-                      onClick={() => {
-                        setActiveIngredient(ing.name);
-                        askSubstitution(ing);
-                      }}
-                      className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded-md flex-shrink-0 hover-elevate active-elevate-2"
-                      data-testid={`button-substitute-${idx}`}
+                      onClick={() => setSelectedIngredients(new Set())}
+                      className="text-xs text-muted-foreground hover-elevate active-elevate-2 rounded px-1"
+                      data-testid="button-clear-selection"
                     >
-                      Substitute?
+                      Clear
                     </button>
                   )}
                 </div>
-              ))}
-            </div>
 
-            {missingIngredients.length > 0 && (
-              <div className="mt-4 pt-4 border-t border-border">
-                <p className="text-xs text-muted-foreground mb-2">
-                  Missing {missingIngredients.length} ingredient{missingIngredients.length !== 1 ? "s" : ""}? Ask the AI for substitutes.
-                </p>
                 <Button
-                  variant="outline"
+                  variant={selectedIngredients.size > 0 ? "default" : "outline"}
                   size="sm"
                   className="w-full gap-1.5"
-                  onClick={() => {
-                    setChatOpen(true);
-                    if (chatMessages.length === 0) {
-                      setChatInput(`I'm missing: ${missingIngredients.map((i) => i.name).join(", ")}. What can I substitute?`);
-                    }
-                  }}
-                  data-testid="button-open-chat"
+                  onClick={
+                    selectedIngredients.size > 0
+                      ? askSelectedSubstitutes
+                      : () => {
+                          const all = substitutableIngredients.map((i) => i.name);
+                          setSelectedIngredients(new Set(all));
+                        }
+                  }
+                  disabled={isStreaming}
+                  data-testid="button-ask-substitutes"
                 >
-                  <MessageSquare className="w-3.5 h-3.5" />
-                  Ask for substitutions
+                  <ShoppingBag className="w-3.5 h-3.5" />
+                  {selectedIngredients.size > 0
+                    ? `Ask for ${selectedIngredients.size} substitute${selectedIngredients.size !== 1 ? "s" : ""}`
+                    : "Select all missing"}
                 </Button>
               </div>
             )}
@@ -317,7 +417,7 @@ export default function RecipeDetail({ recipe, onBack }: Props) {
                     </div>
                     <div>
                       <h3 className="font-semibold text-sm text-foreground">Chef Assistant</h3>
-                      <p className="text-xs text-muted-foreground">Ask about substitutions or cooking tips</p>
+                      <p className="text-xs text-muted-foreground">Substitutions and cooking tips</p>
                     </div>
                   </div>
                   <button
@@ -329,7 +429,7 @@ export default function RecipeDetail({ recipe, onBack }: Props) {
                   </button>
                 </div>
 
-                <ScrollArea className="h-[280px] p-4">
+                <ScrollArea className="h-[300px] p-4">
                   {chatMessages.length === 0 && (
                     <div className="flex items-center justify-center h-full">
                       <div className="text-center">
@@ -351,19 +451,20 @@ export default function RecipeDetail({ recipe, onBack }: Props) {
                           msg.role === "user" ? "bg-primary" : "bg-accent"
                         }`}>
                           {msg.role === "user" ? (
-                            <span className="text-xs text-primary-foreground font-bold">Y</span>
+                            <span className="text-xs text-primary-foreground font-bold">You</span>
                           ) : (
                             <ChefHat className="w-4 h-4 text-accent-foreground" />
                           )}
                         </div>
-                        <div className={`max-w-[75%] rounded-xl px-3.5 py-2.5 text-sm ${
+                        <div className={`max-w-[78%] rounded-xl px-3.5 py-2.5 text-sm ${
                           msg.role === "user"
                             ? "bg-primary text-primary-foreground"
                             : "bg-muted text-foreground"
                         }`}>
-                          <p className="whitespace-pre-wrap leading-relaxed">{msg.content}</p>
-                          {isStreaming && idx === chatMessages.length - 1 && msg.role === "assistant" && msg.content === "" && (
-                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          {msg.content ? (
+                            <p className="whitespace-pre-wrap leading-relaxed">{msg.content}</p>
+                          ) : (
+                            isStreaming && <Loader2 className="w-3.5 h-3.5 animate-spin" />
                           )}
                         </div>
                       </div>
@@ -397,9 +498,7 @@ export default function RecipeDetail({ recipe, onBack }: Props) {
                       )}
                     </Button>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1.5">
-                    Press Enter to send, Shift+Enter for new line
-                  </p>
+                  <p className="text-xs text-muted-foreground mt-1.5">Press Enter to send, Shift+Enter for new line</p>
                 </div>
               </CardContent>
             </Card>
@@ -422,9 +521,9 @@ export default function RecipeDetail({ recipe, onBack }: Props) {
           >
             <MessageSquare className="w-5 h-5" />
             Ask Chef AI
-            {missingIngredients.length > 0 && (
+            {chatMessages.length > 0 && (
               <span className="bg-primary-foreground text-primary text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
-                {missingIngredients.length}
+                {Math.floor(chatMessages.filter((m) => m.role === "assistant").length)}
               </span>
             )}
           </Button>
