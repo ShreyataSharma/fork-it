@@ -742,135 +742,161 @@ export default function RecipeDetail({ recipe, onBack, userIngredients }: Props)
         </div>
       </div>
 
-      {/* AI Chat panel */}
+      {/* Floating chat button */}
       <AnimatePresence>
-        {chatOpen && (
+        {!chatOpen && (
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.8 }}
+            className="fixed bottom-6 right-6 z-50"
           >
-            <Card className="border-card-border shadow-md" data-testid="panel-ai-chat">
-              <CardContent className="p-0">
-                <div className="flex items-center justify-between p-4 border-b border-border">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-                      <MessageSquare className="w-4 h-4 text-primary-foreground" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-sm text-foreground">Sous Chef</h3>
-                      <p className="text-xs text-muted-foreground">Substitutions and cooking tips</p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => setChatOpen(false)}
-                    className="text-muted-foreground hover-elevate active-elevate-2 rounded-md p-1"
-                    data-testid="button-close-chat"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-
-                <ScrollArea className="h-[300px] p-4">
-                  {chatMessages.length === 0 && (
-                    <div className="flex items-center justify-center h-full">
-                      <div className="text-center">
-                        <ChefHat className="w-10 h-10 text-muted-foreground/40 mx-auto mb-2" />
-                        <p className="text-sm text-muted-foreground">
-                          Ask me about ingredient substitutions, cooking tips, or anything about this recipe!
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                  <div className="space-y-3">
-                    {chatMessages.map((msg, idx) => (
-                      <div
-                        key={idx}
-                        className={`flex gap-3 ${msg.role === "user" ? "flex-row-reverse" : ""}`}
-                        data-testid={`chat-message-${idx}`}
-                      >
-                        <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 ${
-                          msg.role === "user" ? "bg-primary" : "bg-accent"
-                        }`}>
-                          {msg.role === "user" ? (
-                            <span className="text-xs text-primary-foreground font-bold">You</span>
-                          ) : (
-                            <ChefHat className="w-4 h-4 text-accent-foreground" />
-                          )}
-                        </div>
-                        <div className={`max-w-[78%] rounded-xl px-3.5 py-2.5 text-sm ${
-                          msg.role === "user"
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-muted text-foreground"
-                        }`}>
-                          {msg.content ? (
-                            <p className="whitespace-pre-wrap leading-relaxed">{stripMarkdown(msg.content)}</p>
-                          ) : (
-                            isStreaming && <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                    <div ref={chatEndRef} />
-                  </div>
-                </ScrollArea>
-
-                <div className="p-4 border-t border-border">
-                  <div className="flex gap-2">
-                    <Textarea
-                      ref={textareaRef}
-                      placeholder="Ask about a substitution or cooking tip..."
-                      value={chatInput}
-                      onChange={(e) => setChatInput(e.target.value)}
-                      onKeyDown={handleKeyDown}
-                      className="min-h-[44px] max-h-[120px] text-sm resize-none"
-                      disabled={isStreaming}
-                      data-testid="input-chat"
-                    />
-                    <Button
-                      size="icon"
-                      onClick={handleSendMessage}
-                      disabled={!chatInput.trim() || isStreaming}
-                      data-testid="button-send-chat"
-                    >
-                      {isStreaming ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <Send className="w-4 h-4" />
-                      )}
-                    </Button>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1.5">Press Enter to send, Shift+Enter for new line</p>
-                </div>
-              </CardContent>
-            </Card>
+            <Button
+              size="lg"
+              onClick={() => setChatOpen(true)}
+              className="gap-2 rounded-full shadow-lg"
+              data-testid="button-floating-chat"
+            >
+              <MessageSquare className="w-5 h-5" />
+              Ask Sous Chef
+              {chatMessages.length > 0 && (
+                <span className="bg-primary-foreground text-primary text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
+                  {chatMessages.filter((m) => m.role === "assistant").length}
+                </span>
+              )}
+            </Button>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Floating chat button */}
-      {!chatOpen && (
-        <motion.div
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="fixed bottom-6 right-6 z-10"
-        >
-          <Button
-            size="lg"
-            onClick={() => setChatOpen(true)}
-            className="gap-2 rounded-full shadow-lg"
-            data-testid="button-floating-chat"
-          >
-            <MessageSquare className="w-5 h-5" />
-            Ask Sous Chef
-            {chatMessages.length > 0 && (
-              <span className="bg-primary-foreground text-primary text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
-                {Math.floor(chatMessages.filter((m) => m.role === "assistant").length)}
-              </span>
-            )}
-          </Button>
-        </motion.div>
-      )}
+      {/* Floating chat window — fixed bottom-right on desktop, bottom-sheet on mobile */}
+      <AnimatePresence>
+        {chatOpen && (
+          <>
+            {/* Mobile backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/30 z-40 sm:hidden"
+              onClick={() => setChatOpen(false)}
+            />
+            <motion.div
+              initial={{ opacity: 0, y: 40 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 40 }}
+              transition={{ type: "spring", damping: 28, stiffness: 300 }}
+              className="fixed z-50
+                bottom-0 left-0 right-0
+                sm:bottom-6 sm:right-6 sm:left-auto sm:w-[380px]"
+              data-testid="panel-ai-chat"
+            >
+              <Card className="border-card-border shadow-2xl flex flex-col overflow-hidden
+                rounded-t-2xl rounded-b-none
+                sm:rounded-2xl
+                h-[70vh] sm:h-[480px]">
+                <CardContent className="p-0 flex flex-col flex-1 min-h-0">
+
+                  {/* Header */}
+                  <div className="flex items-center justify-between px-4 py-3 border-b border-border flex-shrink-0 bg-card">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
+                        <MessageSquare className="w-4 h-4 text-primary-foreground" />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-sm text-foreground">Sous Chef</h3>
+                        <p className="text-xs text-muted-foreground">Substitutions and cooking tips</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setChatOpen(false)}
+                      className="text-muted-foreground hover-elevate active-elevate-2 rounded-md p-1.5"
+                      data-testid="button-close-chat"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  {/* Messages */}
+                  <ScrollArea className="flex-1 min-h-0 p-4">
+                    {chatMessages.length === 0 && (
+                      <div className="flex items-center justify-center h-32 mt-4">
+                        <div className="text-center">
+                          <ChefHat className="w-10 h-10 text-muted-foreground/40 mx-auto mb-2" />
+                          <p className="text-sm text-muted-foreground px-4">
+                            Ask me about ingredient substitutions, cooking tips, or anything about this recipe!
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                    <div className="space-y-3">
+                      {chatMessages.map((msg, idx) => (
+                        <div
+                          key={idx}
+                          className={`flex gap-3 ${msg.role === "user" ? "flex-row-reverse" : ""}`}
+                          data-testid={`chat-message-${idx}`}
+                        >
+                          <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 ${
+                            msg.role === "user" ? "bg-primary" : "bg-accent"
+                          }`}>
+                            {msg.role === "user" ? (
+                              <span className="text-xs text-primary-foreground font-bold">You</span>
+                            ) : (
+                              <ChefHat className="w-4 h-4 text-accent-foreground" />
+                            )}
+                          </div>
+                          <div className={`max-w-[78%] rounded-xl px-3.5 py-2.5 text-sm ${
+                            msg.role === "user"
+                              ? "bg-primary text-primary-foreground"
+                              : "bg-muted text-foreground"
+                          }`}>
+                            {msg.content ? (
+                              <p className="whitespace-pre-wrap leading-relaxed">{stripMarkdown(msg.content)}</p>
+                            ) : (
+                              isStreaming && <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                      <div ref={chatEndRef} />
+                    </div>
+                  </ScrollArea>
+
+                  {/* Input */}
+                  <div className="px-4 py-3 border-t border-border flex-shrink-0 bg-card">
+                    <div className="flex gap-2">
+                      <Textarea
+                        ref={textareaRef}
+                        placeholder="Ask about a substitution or cooking tip..."
+                        value={chatInput}
+                        onChange={(e) => setChatInput(e.target.value)}
+                        onKeyDown={handleKeyDown}
+                        className="min-h-[44px] max-h-[100px] text-sm resize-none"
+                        disabled={isStreaming}
+                        data-testid="input-chat"
+                      />
+                      <Button
+                        size="icon"
+                        onClick={handleSendMessage}
+                        disabled={!chatInput.trim() || isStreaming}
+                        data-testid="button-send-chat"
+                      >
+                        {isStreaming ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Send className="w-4 h-4" />
+                        )}
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1.5">Enter to send · Shift+Enter for new line</p>
+                  </div>
+
+                </CardContent>
+              </Card>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
