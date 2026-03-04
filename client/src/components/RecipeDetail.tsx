@@ -627,7 +627,7 @@ export default function RecipeDetail({ recipe, onBack, userIngredients }: Props)
                         className={`text-sm font-medium block ${
                           isSelected ? "text-primary"
                           : isOwn ? "text-green-800"
-                          : !ing.userHas && !isSkip ? "text-amber-800"
+                          : substitutable ? "text-yellow-900"
                           : "text-foreground"
                         }`}
                         data-testid={`text-ingredient-name-${idx}`}
