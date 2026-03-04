@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useDropzone } from "react-dropzone";
 import { Upload, X, Sparkles, Camera, Type, ArrowRight, Loader2, CheckCircle2, Globe, History, Clock, Trash2, Search } from "lucide-react";
@@ -79,6 +79,29 @@ export default function Home() {
   const [historySearch, setHistorySearch] = useState("");
 
   const LUCKY = "__lucky__";
+
+  // Keep a ref to current view so the popstate handler always sees the latest value
+  const viewRef = useRef(view);
+  useEffect(() => { viewRef.current = view; }, [view]);
+
+  // Push a browser history entry on every forward navigation
+  useEffect(() => {
+    if (view !== "input") {
+      window.history.pushState({ view }, "");
+    }
+  }, [view]);
+
+  // Browser back button → go back one app view instead of exiting
+  useEffect(() => {
+    const onPopState = () => {
+      const v = viewRef.current;
+      if (v === "detail") { setView("recipes"); setSelectedRecipe(null); }
+      else if (v === "recipes") { setView("ingredients"); }
+      else if (v === "ingredients") { setView("input"); }
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
 
   const toggleCuisine = (label: string) => {
     if (label === LUCKY) {
