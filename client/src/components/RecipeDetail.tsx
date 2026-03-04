@@ -862,7 +862,7 @@ export default function RecipeDetail({ recipe, onBack, userIngredients }: Props)
             data-testid="button-floating-chat"
           >
             <MessageSquare className="w-5 h-5" />
-            Ask Chef AI
+            Ask Sous Chef
             {chatMessages.length > 0 && (
               <span className="bg-primary-foreground text-primary text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
                 {Math.floor(chatMessages.filter((m) => m.role === "assistant").length)}
