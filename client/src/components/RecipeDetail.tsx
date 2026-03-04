@@ -24,6 +24,26 @@ const difficultyColors: Record<string, string> = {
   Hard: "bg-red-100 text-red-700 border-red-200",
 };
 
+function stripMarkdown(text: string): string {
+  return text
+    .replace(/#{1,6}\s+/gm, "")
+    .replace(/\*{3}(.+?)\*{3}/gs, "$1")
+    .replace(/\*{2}(.+?)\*{2}/gs, "$1")
+    .replace(/\*(.+?)\*/gs, "$1")
+    .replace(/_{2}(.+?)_{2}/gs, "$1")
+    .replace(/_(.+?)_/gs, "$1")
+    .replace(/`{3}[\s\S]*?`{3}/g, "")
+    .replace(/`(.+?)`/g, "$1")
+    .replace(/^\s*[-*+]\s+/gm, "")
+    .replace(/^\s*(\d+)\.\s+/gm, "$1) ")
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+    .replace(/\*+/g, "")
+    .replace(/_{2,}/g, "")
+    .replace(/^#+\s*/gm, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 const BASIC_INGREDIENTS = new Set([
   "water", "salt", "pepper", "black pepper", "white pepper",
   "sugar", "brown sugar", "oil", "olive oil", "vegetable oil", "cooking oil", "canola oil",
@@ -462,7 +482,7 @@ export default function RecipeDetail({ recipe, onBack }: Props) {
                             : "bg-muted text-foreground"
                         }`}>
                           {msg.content ? (
-                            <p className="whitespace-pre-wrap leading-relaxed">{msg.content}</p>
+                            <p className="whitespace-pre-wrap leading-relaxed">{stripMarkdown(msg.content)}</p>
                           ) : (
                             isStreaming && <Loader2 className="w-3.5 h-3.5 animate-spin" />
                           )}

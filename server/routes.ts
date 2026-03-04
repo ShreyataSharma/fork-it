@@ -168,9 +168,19 @@ IMPORTANT: Write in plain, natural conversational language only. Do not use any 
       });
 
       for await (const chunk of stream) {
-        const content = chunk.choices[0]?.delta?.content || "";
-        if (content) {
-          res.write(`data: ${JSON.stringify({ content })}\n\n`);
+        const raw = chunk.choices[0]?.delta?.content || "";
+        if (raw) {
+          const content = raw
+            .replace(/#{1,6}\s*/g, "")
+            .replace(/\*{1,3}([^*]+)\*{1,3}/g, "$1")
+            .replace(/_{1,2}([^_]+)_{1,2}/g, "$1")
+            .replace(/^\s*[-*+]\s+/gm, "")
+            .replace(/^\s*\d+\.\s+/gm, (m) => m.trim().replace(/\.\s*$/, ") "))
+            .replace(/`{1,3}([^`]*)`{1,3}/g, "$1")
+            .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1");
+          if (content) {
+            res.write(`data: ${JSON.stringify({ content })}\n\n`);
+          }
         }
       }
 
