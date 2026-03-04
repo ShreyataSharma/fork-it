@@ -77,6 +77,9 @@ export default function Home() {
   const { history, addToHistory, clearHistory } = useRecipeHistory();
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historySearch, setHistorySearch] = useState("");
+  const [customCuisineOpen, setCustomCuisineOpen] = useState(false);
+  const [customCuisineText, setCustomCuisineText] = useState("");
+  const customCuisineInputRef = useRef<HTMLInputElement>(null);
 
   const LUCKY = "__lucky__";
 
@@ -103,8 +106,22 @@ export default function Home() {
     return () => window.removeEventListener("popstate", onPopState);
   }, []);
 
+  const handleAddCustomCuisine = () => {
+    const trimmed = customCuisineText.trim();
+    if (trimmed) {
+      setSelectedCuisines((prev) => {
+        const without = prev.filter((c) => c !== LUCKY);
+        return without.includes(trimmed) ? without : [...without, trimmed];
+      });
+    }
+    setCustomCuisineText("");
+    setCustomCuisineOpen(false);
+  };
+
   const toggleCuisine = (label: string) => {
     if (label === LUCKY) {
+      setCustomCuisineOpen(false);
+      setCustomCuisineText("");
       setSelectedCuisines((prev) => (prev.includes(LUCKY) ? [] : [LUCKY]));
     } else {
       setSelectedCuisines((prev) => {
@@ -592,7 +609,77 @@ export default function Home() {
                     <span>🎲</span>
                     I'm Feeling Lucky
                   </button>
+
+                  {/* Other chip */}
+                  <button
+                    onClick={() => {
+                      setSelectedCuisines((prev) => prev.filter((c) => c !== LUCKY));
+                      setCustomCuisineOpen((prev) => !prev);
+                      if (!customCuisineOpen) {
+                        setTimeout(() => customCuisineInputRef.current?.focus(), 50);
+                      } else {
+                        setCustomCuisineText("");
+                      }
+                    }}
+                    data-testid="button-cuisine-other"
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium border transition-all hover-elevate active-elevate-2 ${
+                      customCuisineOpen
+                        ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                        : "bg-muted text-muted-foreground border-border hover:border-primary/50 hover:text-foreground"
+                    }`}
+                  >
+                    <span>✏️</span>
+                    Other
+                  </button>
                 </div>
+
+                {/* Custom cuisine input */}
+                <AnimatePresence>
+                  {customCuisineOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      transition={{ duration: 0.18 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="flex items-center gap-2 mt-3">
+                        <div className="relative flex-1">
+                          <input
+                            ref={customCuisineInputRef}
+                            type="text"
+                            placeholder="e.g. Turkish, Cajun, Uzbek, Peruvian..."
+                            value={customCuisineText}
+                            onChange={(e) => setCustomCuisineText(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") handleAddCustomCuisine();
+                              if (e.key === "Escape") { setCustomCuisineOpen(false); setCustomCuisineText(""); }
+                            }}
+                            data-testid="input-custom-cuisine"
+                            className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 placeholder:text-muted-foreground"
+                          />
+                        </div>
+                        <Button
+                          size="sm"
+                          onClick={handleAddCustomCuisine}
+                          disabled={!customCuisineText.trim()}
+                          data-testid="button-add-custom-cuisine"
+                          className="flex-shrink-0"
+                        >
+                          Add
+                        </Button>
+                        <button
+                          onClick={() => { setCustomCuisineOpen(false); setCustomCuisineText(""); }}
+                          className="text-muted-foreground hover:text-foreground flex-shrink-0 p-1 rounded hover-elevate"
+                          data-testid="button-cancel-custom-cuisine"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
                 {selectedCuisines.length > 0 && (
                   <div className="mt-3 pt-3 border-t border-border flex items-center justify-between gap-2">
                     <p className="text-xs text-muted-foreground">
@@ -602,7 +689,7 @@ export default function Home() {
                       }
                     </p>
                     <button
-                      onClick={() => setSelectedCuisines([])}
+                      onClick={() => { setSelectedCuisines([]); setCustomCuisineOpen(false); setCustomCuisineText(""); }}
                       className="text-xs text-muted-foreground hover-elevate active-elevate-2 rounded px-1.5 py-0.5"
                       data-testid="button-clear-cuisines"
                     >
