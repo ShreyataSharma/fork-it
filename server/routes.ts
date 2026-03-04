@@ -117,7 +117,7 @@ VIOLATION CHECK: Before returning, verify every recipe belongs to either a selec
 
       const prompt = `You are a world-class chef. Based on these main ingredients the user has: ${ingredients.join(", ")}
 
-Generate exactly 10 delicious recipes. Assume the user has standard pantry staples (salt, pepper, olive oil, butter, garlic, onions, basic spices, soy sauce, vinegar, flour, sugar, eggs, milk, common condiments).
+Generate exactly 10 delicious recipes. Assume the user has these standard pantry staples ONLY: salt, black pepper, olive oil, vegetable oil, butter, garlic, onions, basic dry spices (cumin, coriander, turmeric, paprika, chili powder, oregano, cinnamon, garam masala, etc.), soy sauce, vinegar, flour, cornstarch, sugar, baking soda, baking powder, eggs, milk, common condiments (ketchup, mustard, hot sauce).
 
 ${cuisineInstruction}
 
@@ -155,7 +155,12 @@ For each recipe, respond in this EXACT JSON format:
   ]
 }
 
-Make recipes varied in cooking methods and difficulty levels. Set userHas to true if the ingredient is in the user's list or is a common pantry staple. Set to false for specialty ingredients they may not have. For macros, estimate realistic values per 1 serving (calories, protein in grams, carbs in grams, fat in grams, fiber in grams, servingWeightG as the total weight of 1 serving in grams).`;
+Make recipes varied in cooking methods and difficulty levels.
+
+STRICT userHas rules — follow exactly:
+- Set userHas: true ONLY if the ingredient is explicitly in the user's ingredient list above, OR is in the pantry staples list above.
+- Set userHas: false for ALL of these, even if common: rice, pasta, noodles, bread, tortillas, potatoes, beans, lentils, chickpeas, canned tomatoes, broth/stock, cheese, cream, yogurt, coconut milk, nuts, seeds, fresh herbs, lemons/limes, any fresh produce NOT in the user's list, and any specialty or store-bought ingredient.
+- When in doubt, set userHas: false. For macros, estimate realistic values per 1 serving (calories, protein in grams, carbs in grams, fat in grams, fiber in grams, servingWeightG as the total weight of 1 serving in grams).`;
 
       const response = await openai.chat.completions.create({
         model: "gpt-5.2",
