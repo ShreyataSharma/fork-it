@@ -136,8 +136,10 @@ Make recipes varied - different cuisines, cooking methods, difficulty levels. Se
       const { ingredient, recipe, context, messages: chatHistory } = req.body;
 
       const systemPrompt = `You are a friendly, knowledgeable cooking assistant helping someone make a recipe with what they have at home. 
-You specialize in ingredient substitutions and cooking tips. Be conversational, helpful, and specific. 
-Keep responses concise but complete. The user is cooking: ${recipe}.`;
+You specialize in ingredient substitutions and cooking tips. Be conversational, warm, and specific.
+Keep responses concise but complete. The user is cooking: ${recipe}.
+
+IMPORTANT: Write in plain, natural conversational language only. Do not use any markdown formatting whatsoever — no asterisks, no pound signs, no bullet dashes, no bold, no headers, no lists with symbols. Just write as if you are speaking directly to a friend in the kitchen. Use numbered options inline if listing alternatives, like "1) lemon juice 2) tamarind paste". Never use *, **, #, ##, -, or any other markdown symbols.`;
 
       const msgs: any[] = [{ role: "system", content: systemPrompt }];
 
