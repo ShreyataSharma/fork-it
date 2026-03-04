@@ -147,13 +147,14 @@ For each recipe, respond in this EXACT JSON format:
         "calories": 420,
         "protein": 32,
         "carbs": 38,
-        "fat": 12
+        "fat": 12,
+        "servingWeightG": 280
       }
     }
   ]
 }
 
-Make recipes varied in cooking methods and difficulty levels. Set userHas to true if the ingredient is in the user's list or is a common pantry staple. Set to false for specialty ingredients they may not have. For macros, estimate realistic values per 1 serving (calories, protein in grams, carbs in grams, fat in grams).`;
+Make recipes varied in cooking methods and difficulty levels. Set userHas to true if the ingredient is in the user's list or is a common pantry staple. Set to false for specialty ingredients they may not have. For macros, estimate realistic values per 1 serving (calories, protein in grams, carbs in grams, fat in grams, servingWeightG as the total weight of 1 serving in grams).`;
 
       const response = await openai.chat.completions.create({
         model: "gpt-5.2",

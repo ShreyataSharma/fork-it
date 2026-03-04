@@ -39,6 +39,7 @@ export interface RecipeMacros {
   protein: number;
   carbs: number;
   fat: number;
+  servingWeightG: number;
 }
 
 export interface Recipe {

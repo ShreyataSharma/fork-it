@@ -247,6 +247,27 @@ function NutritionChart({ macros, defaultServings }: { macros: RecipeMacros; def
           </p>
         </div>
 
+        {/* Serving weight row */}
+        {macros.servingWeightG > 0 && (() => {
+          const singleG  = macros.servingWeightG;
+          const singleLb = +(singleG / 453.59).toFixed(2);
+          const totalG   = singleG * defaultServings;
+          const totalLb  = +(totalG / 453.59).toFixed(2);
+          return [
+            <div key="weight-label" className="flex items-center gap-1.5">
+              <span className="text-xs font-semibold text-foreground">Serving size</span>
+            </div>,
+            <div key="weight-single" className="text-center">
+              <div className="text-xs text-foreground font-medium">{singleG} g</div>
+              <div className="text-xs text-muted-foreground">{singleLb} lb</div>
+            </div>,
+            <div key="weight-default" className="text-center">
+              <div className="text-xs text-foreground font-medium">{totalG} g</div>
+              <div className="text-xs text-muted-foreground">{totalLb} lb</div>
+            </div>,
+          ];
+        })()}
+
         {/* Total calories row */}
         <div className="flex items-center gap-1.5">
           <span className="text-xs font-semibold text-foreground">Calories</span>
