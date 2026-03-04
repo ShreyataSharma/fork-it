@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Clock, Flame, Users, ChefHat, CheckCircle2, ArrowLeft, MessageSquare, Send, Loader2, X, ShoppingBag } from "lucide-react";
+import { Clock, Flame, Users, ChefHat, CheckCircle2, ArrowLeft, MessageSquare, Send, Loader2, X, ShoppingBag, Minus, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -70,15 +70,80 @@ function canSubstitute(ing: RecipeIngredient, mainIngredients: string[] | undefi
   return true;
 }
 
+// ── Serving scaler ──────────────────────────────────────────────────────────
+
+const NO_SCALE_KEYWORDS = ["to taste", "as needed", "pinch", "a pinch", "handful", "a handful", "optional", "for garnish", "garnish"];
+
+function parseFraction(s: string): number | null {
+  const t = s.trim();
+  const mixed = t.match(/^(\d+)\s+(\d+)\/(\d+)$/);
+  if (mixed) return +mixed[1] + +mixed[2] / +mixed[3];
+  const frac = t.match(/^(\d+)\/(\d+)$/);
+  if (frac) return +frac[1] / +frac[2];
+  const n = parseFloat(t);
+  return isNaN(n) ? null : n;
+}
+
+const NICE_FRACTIONS: [number, string][] = [
+  [1 / 8, "1/8"], [1 / 4, "1/4"], [1 / 3, "1/3"], [3 / 8, "3/8"],
+  [1 / 2, "1/2"], [5 / 8, "5/8"], [2 / 3, "2/3"], [3 / 4, "3/4"], [7 / 8, "7/8"],
+];
+
+function formatNumber(n: number): string {
+  if (n <= 0) return "0";
+  const whole = Math.floor(n);
+  const frac = n - whole;
+  for (const [val, str] of NICE_FRACTIONS) {
+    if (Math.abs(frac - val) < 0.04) {
+      return whole === 0 ? str : `${whole} ${str}`;
+    }
+  }
+  if (frac < 0.04) return String(whole);
+  // fallback: 1 decimal, trim trailing zero
+  return n.toFixed(1).replace(/\.0$/, "");
+}
+
+function scaleAmount(amount: string, scale: number): string {
+  if (scale === 1) return amount;
+  const lower = amount.toLowerCase();
+  if (NO_SCALE_KEYWORDS.some((k) => lower.includes(k))) return amount;
+
+  // Range like "3-4" or "2–3"
+  const rangeMatch = amount.match(/^([\d ./]+?)\s*[-–]\s*([\d ./]+)([\s\S]*)$/);
+  if (rangeMatch) {
+    const lo = parseFraction(rangeMatch[1]);
+    const hi = parseFraction(rangeMatch[2]);
+    if (lo !== null && hi !== null) {
+      return `${formatNumber(lo * scale)}–${formatNumber(hi * scale)}${rangeMatch[3]}`;
+    }
+  }
+
+  // Leading number: integer, decimal, fraction, or mixed  e.g. "1 1/2 cups"
+  const numMatch = amount.match(/^((?:\d+\s+)?\d+(?:[./]\d+)?)\s*([\s\S]*)$/);
+  if (numMatch) {
+    const n = parseFraction(numMatch[1]);
+    if (n !== null) {
+      const rest = numMatch[2].trim();
+      return rest ? `${formatNumber(n * scale)} ${rest}` : formatNumber(n * scale);
+    }
+  }
+
+  return amount;
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+
 export default function RecipeDetail({ recipe, onBack }: Props) {
   const [chatOpen, setChatOpen] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
   const [selectedIngredients, setSelectedIngredients] = useState<Set<string>>(new Set());
+  const [servings, setServings] = useState(recipe.servings);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  const scale = servings / recipe.servings;
   const substitutableIngredients = recipe.allIngredients.filter((ing) => canSubstitute(ing, recipe.mainIngredients));
 
   useEffect(() => {
@@ -254,7 +319,41 @@ export default function RecipeDetail({ recipe, onBack }: Props) {
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Servings</p>
-              <p className="text-sm font-semibold">{recipe.servings} people</p>
+              <div className="flex items-center gap-2 mt-0.5">
+                <button
+                  onClick={() => setServings((s) => Math.max(1, s - 1))}
+                  disabled={servings <= 1}
+                  className="w-6 h-6 rounded-full border border-border flex items-center justify-center text-muted-foreground hover-elevate active-elevate-2 disabled:opacity-30 disabled:cursor-not-allowed"
+                  data-testid="button-decrease-servings"
+                >
+                  <Minus className="w-3 h-3" />
+                </button>
+                <span className="text-sm font-semibold min-w-[2ch] text-center" data-testid="text-servings-count">
+                  {servings}
+                </span>
+                <button
+                  onClick={() => setServings((s) => Math.min(50, s + 1))}
+                  disabled={servings >= 50}
+                  className="w-6 h-6 rounded-full border border-border flex items-center justify-center text-muted-foreground hover-elevate active-elevate-2 disabled:opacity-30 disabled:cursor-not-allowed"
+                  data-testid="button-increase-servings"
+                >
+                  <Plus className="w-3 h-3" />
+                </button>
+                {scale !== 1 && (
+                  <button
+                    onClick={() => setServings(recipe.servings)}
+                    className="text-xs text-primary underline underline-offset-2 hover-elevate active-elevate-2"
+                    data-testid="button-reset-servings"
+                  >
+                    reset
+                  </button>
+                )}
+              </div>
+              {scale !== 1 && (
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  (default: {recipe.servings})
+                </p>
+              )}
             </div>
           </div>
         </div>
@@ -330,7 +429,10 @@ export default function RecipeDetail({ recipe, onBack }: Props) {
                         {isOwn && <span className="ml-1.5 text-xs font-normal text-green-600">(your ingredient)</span>}
                       </span>
                       <span className="text-xs text-muted-foreground" data-testid={`text-ingredient-amount-${idx}`}>
-                        {ing.amount}
+                        {scaleAmount(ing.amount, scale)}
+                        {scale !== 1 && (
+                          <span className="text-muted-foreground/50 ml-1">(orig: {ing.amount})</span>
+                        )}
                       </span>
                     </div>
 
