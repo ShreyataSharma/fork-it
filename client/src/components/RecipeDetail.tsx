@@ -119,6 +119,74 @@ function scaleAmount(amount: string, scale: number): string {
   return amount;
 }
 
+// ── Unit conversion ──────────────────────────────────────────────────────────
+
+const VOL_IMP: Record<string, number> = {
+  tsp: 4.929, teaspoon: 4.929, teaspoons: 4.929,
+  tbsp: 14.787, tablespoon: 14.787, tablespoons: 14.787,
+  "fl oz": 29.574,
+  cup: 236.59, cups: 236.59,
+  pint: 473.18, pints: 473.18, pt: 473.18,
+  quart: 946.35, quarts: 946.35, qt: 946.35,
+  gallon: 3785.41, gallons: 3785.41,
+};
+const VOL_MET: Record<string, number> = {
+  ml: 1, milliliter: 1, milliliters: 1, millilitre: 1, millilitres: 1,
+  cl: 10, dl: 100,
+  l: 1000, liter: 1000, liters: 1000, litre: 1000, litres: 1000,
+};
+const WEIGHT_IMP: Record<string, number> = {
+  oz: 28.35, ounce: 28.35, ounces: 28.35,
+  lb: 453.59, lbs: 453.59, pound: 453.59, pounds: 453.59,
+};
+const WEIGHT_MET: Record<string, number> = {
+  g: 1, gram: 1, grams: 1,
+  kg: 1000, kilogram: 1000, kilograms: 1000,
+};
+
+function trimNum(n: number, decimals = 2): string {
+  return n.toFixed(decimals).replace(/\.?0+$/, "");
+}
+function fmtMl(ml: number): string {
+  return ml >= 950 ? `${trimNum(ml / 1000)} L` : `${Math.round(ml)} ml`;
+}
+function fmtImpVol(ml: number): string {
+  if (ml >= 946) return `${trimNum(ml / 946.35)} qt`;
+  if (ml >= 118) return `${trimNum(ml / 236.59)} cups`;
+  if (ml >= 14)  return `${trimNum(ml / 14.787)} tbsp`;
+  return `${trimNum(ml / 4.929)} tsp`;
+}
+function fmtG(g: number): string {
+  return g >= 950 ? `${trimNum(g / 1000)} kg` : `${Math.round(g)} g`;
+}
+function fmtImpWeight(g: number): string {
+  return g >= 453 ? `${trimNum(g / 453.59)} lb` : `${trimNum(g / 28.35)} oz`;
+}
+
+function getConversion(rawAmount: string, scale: number): string | null {
+  const lower = rawAmount.toLowerCase().trim();
+  if (NO_SCALE_KEYWORDS.some((k) => lower.includes(k))) return null;
+
+  const numMatch = rawAmount.match(/^((?:\d+\s+)?\d+(?:[./]\d+)?)\s*([\s\S]*)$/);
+  if (!numMatch) return null;
+  const num = parseFraction(numMatch[1]);
+  if (!num) return null;
+
+  const scaledNum = num * scale;
+  const restLower = numMatch[2].trim().toLowerCase();
+
+  if (restLower.startsWith("fl oz")) return fmtMl(scaledNum * 29.574);
+
+  const firstWord = restLower.split(/[\s,.(]/)[0];
+
+  if (firstWord in VOL_IMP)    return fmtMl(scaledNum * VOL_IMP[firstWord]);
+  if (firstWord in VOL_MET)    return fmtImpVol(scaledNum * VOL_MET[firstWord]);
+  if (firstWord in WEIGHT_IMP) return fmtG(scaledNum * WEIGHT_IMP[firstWord]);
+  if (firstWord in WEIGHT_MET) return fmtImpWeight(scaledNum * WEIGHT_MET[firstWord]);
+
+  return null;
+}
+
 // ────────────────────────────────────────────────────────────────────────────
 
 export default function RecipeDetail({ recipe, onBack }: Props) {
@@ -418,6 +486,12 @@ export default function RecipeDetail({ recipe, onBack }: Props) {
                       </span>
                       <span className="text-xs text-muted-foreground" data-testid={`text-ingredient-amount-${idx}`}>
                         {scaleAmount(ing.amount, scale)}
+                        {(() => {
+                          const conv = getConversion(ing.amount, scale);
+                          return conv ? (
+                            <span className="ml-1 text-muted-foreground/55">({conv})</span>
+                          ) : null;
+                        })()}
                       </span>
                     </div>
 
