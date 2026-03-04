@@ -593,7 +593,7 @@ export default function RecipeDetail({ recipe, onBack, userIngredients }: Props)
                 let rowClass = "bg-muted/40";
                 if (isSelected) rowClass = "bg-primary/10 border border-primary/30";
                 else if (isOwn) rowClass = "bg-green-50 border border-green-100";
-                else if (!isSkip && !ing.userHas) rowClass = "bg-amber-50 border border-amber-100";
+                else if (substitutable) rowClass = "bg-yellow-50 border border-yellow-200";
 
                 return (
                   <div
