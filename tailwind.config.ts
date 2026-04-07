@@ -11,13 +11,20 @@ export default {
         sm: ".1875rem", /* 3px */
       },
       colors: {
+        // Fork It Design System Colors
+        cream: "#F7F5EF",
+        olive: "#6B7A3A",
+        "olive-mid": "#8EA35F",
+        "olive-pale": "#EFF2E4",
+        espresso: "#1E2118",
+
         // Flat / base colors (regular buttons)
         background: "hsl(var(--background) / <alpha-value>)",
         foreground: "hsl(var(--foreground) / <alpha-value>)",
         border: "hsl(var(--border) / <alpha-value>)",
         input: "hsl(var(--input) / <alpha-value>)",
         card: {
-          DEFAULT: "hsl(var(--card) / <alpha-value>)",
+          DEFAULT: "#FFFFFF",
           foreground: "hsl(var(--card-foreground) / <alpha-value>)",
           border: "hsl(var(--card-border) / <alpha-value>)",
         },
