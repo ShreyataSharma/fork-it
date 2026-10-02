@@ -6,14 +6,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import Auth from "@/pages/Auth";
 import AppLayout from "@/components/AppLayout";
 
-function HomePlaceholder() {
-  return (
-    <div className="p-6">
-      <h2 className="text-2xl font-serif text-espresso mb-4">What's in your fridge?</h2>
-      <p className="text-olive-mid">You are successfully logged in and viewing the layout shell!</p>
-    </div>
-  );
-}
+import Home from "@/pages/Home";
+import Loading from "@/pages/Loading";
 
 function Router() {
   return (
@@ -21,7 +15,17 @@ function Router() {
       <Route path="/" component={Auth} />
       <Route path="/home">
         <AppLayout>
-          <HomePlaceholder />
+          <Home />
+        </AppLayout>
+      </Route>
+      <Route path="/loading">
+        <AppLayout>
+          <Loading />
+        </AppLayout>
+      </Route>
+      <Route path="/recipes">
+        <AppLayout>
+          <div className="p-6 text-espresso">Recipes Screen Coming Soon...</div>
         </AppLayout>
       </Route>
       <Route>
