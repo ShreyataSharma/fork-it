@@ -1,23 +1,28 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { useLocation } from "wouter";
-import { ImagePlus, Loader2, X } from "lucide-react";
+import { ImagePlus, Info, Loader2, Sparkles, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import kitchenHero from "@/assets/home/kitchen-hero.png";
-import utensilsIcon from "@/assets/home/utensils.svg";
+import { supabase } from "@/lib/supabase";
 import arrowRightIcon from "@/assets/home/arrow-right.svg";
 
 const CUISINES = [
-  "Indian", "Italian", "Asian", "Mexican", "Mediterranean", "French",
-  "Middle Eastern", "Japanese", "Korean", "Thai", "Chinese", "Greek", "Spanish", "Other"
+  "Indian", "Italian", "Asian", "Mexican", "Mediterranean", "Korean", "Thai", "Chinese", "Greek"
 ];
 
 const MEALS = [
-  { id: "Breakfast", icon: "🌅" },
+  { id: "Breakfast", icon: "🍳" },
   { id: "Lunch", icon: "🥗" },
-  { id: "Dinner", icon: "🍽️" },
+  { id: "Dinner", icon: "🥘" },
   { id: "Snacks", icon: "🍿" }
 ];
+
+function timeOfDay(): string {
+  const h = new Date().getHours();
+  if (h < 12) return "morning";
+  if (h < 18) return "afternoon";
+  return "evening";
+}
 
 const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
@@ -55,6 +60,16 @@ export default function Home() {
   const [selectedCuisines, setSelectedCuisines] = useState<string[]>([]);
   const [otherCuisine, setOtherCuisine] = useState("");
   const [selectedMeal, setSelectedMeal] = useState<string | null>(null);
+  const [firstName, setFirstName] = useState("");
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      const user = data.user;
+      if (!user) return;
+      const full = user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split("@")[0] || "";
+      setFirstName(String(full).split(" ")[0]);
+    });
+  }, []);
 
   useEffect(() => {
     if (!image) return setImagePreview(null);
@@ -154,35 +169,26 @@ export default function Home() {
     setLocation("/loading");
   };
 
+  const sectionLabel = "text-[10px] font-bold uppercase leading-[15px] tracking-[1.5px] text-espresso/75";
+
   return (
-    <div className="flex flex-col">
-      <div className="px-8 pt-8 pb-16 flex flex-col">
-        {/* Hero illustration */}
-        <div className="relative mx-auto w-full max-w-[326px]">
-          <div className="absolute inset-[8px] rounded-full bg-[rgba(107,122,58,0.1)] blur-[32px]" aria-hidden />
-          <div className="relative aspect-square w-full rotate-1 overflow-hidden rounded-[16px] shadow-[0px_12px_32px_0px_rgba(27,28,24,0.04)]">
-            <img src={kitchenHero} alt="Warm, cozy kitchen" className="h-full w-full object-cover" />
-          </div>
-          <div className="absolute -bottom-[13px] -right-[5px] flex items-center gap-2 rounded-full border border-mist/15 bg-white px-[21px] py-[13px] drop-shadow-[0px_12px_16px_rgba(27,28,24,0.04)]">
-            <img src={utensilsIcon} alt="" width={8.75} height={11.6667} />
-            <span className="text-[12px] font-semibold uppercase leading-4 tracking-[1.2px] text-olive">
-              Made at home
-            </span>
-          </div>
-        </div>
+    <div className="flex flex-col gap-8 px-6 pb-12 pt-6">
+      {/* Greeting */}
+      <div className="flex flex-col gap-2">
+        <span className="text-[10px] font-bold uppercase leading-[15px] tracking-[1.5px] text-olive">
+          Good {timeOfDay()}{firstName && `, ${firstName}`}
+        </span>
+        <h1 className="font-serif text-[36px] font-bold leading-[45px] text-espresso">
+          What's in your <span className="font-normal text-olive">fridge</span> today?
+        </h1>
+        <p className="text-[16px] leading-6 text-espresso/75">
+          Tell us your ingredients and we'll find the perfect recipes
+        </p>
+      </div>
 
-        {/* Copy */}
-        <div className="mt-12 flex flex-col items-center gap-[15px] text-center">
-          <h1 className="max-w-[240px] font-serif text-[36px] leading-[45px] tracking-[-0.9px] text-espresso">
-            Cook something amazing tonight
-          </h1>
-          <p className="max-w-[280px] text-[18px] leading-[29.25px] text-olive/70">
-            Tell us what's in your fridge — we'll do the rest
-          </p>
-        </div>
-
-        {/* Chat-style ingredient input */}
-        <div className="mt-16 rounded-[28px] border border-mist/40 bg-white p-3 shadow-[0px_12px_32px_0px_rgba(27,28,24,0.06)]">
+      {/* Chat-style ingredient input */}
+      <div className="flex flex-col">
+        <div className="rounded-[12px] border border-mist/10 bg-white p-3 drop-shadow-[0px_12px_16px_rgba(27,28,24,0.04)]">
           {imagePreview ? (
             <div className="relative mb-2 ml-1 inline-block">
               <img src={imagePreview} alt="Selected photo" className="h-20 w-20 rounded-[12px] object-cover" />
@@ -203,11 +209,11 @@ export default function Home() {
                 if (parseError) setParseError("");
               }}
               onKeyDown={handleKeyDown}
-              rows={2}
+              rows={3}
               maxLength={2000}
-              placeholder="e.g. chicken, spinach, half a lemon…"
+              placeholder="e.g. chicken breast, garlic, lemon, spinach..."
               aria-label="Ingredients"
-              className="block w-full resize-none bg-transparent px-2 pt-1 text-[16px] leading-6 text-espresso placeholder:text-espresso/40 focus:outline-none"
+              className="block w-full resize-none bg-transparent px-2 pt-1 text-[18px] font-medium leading-7 text-espresso placeholder:text-espresso/40 focus:outline-none"
             />
           )}
           <div className="mt-1 flex items-center justify-between">
@@ -287,90 +293,107 @@ export default function Home() {
         {parseMessage && (
           <p className="mt-4 text-center text-[14px] leading-5 text-olive/80">{parseMessage}</p>
         )}
+      </div>
 
-        {/* Cuisine Chips */}
-        <div className="mt-10 flex flex-col gap-3">
-          <div className="flex flex-wrap gap-2">
-            {CUISINES.map((cuisine) => (
-              <button
-                key={cuisine}
-                onClick={() => toggleCuisine(cuisine)}
-                className={`px-4 py-2 rounded-full text-[13px] font-medium border transition-colors ${
-                  selectedCuisines.includes(cuisine)
-                    ? "bg-olive text-white border-olive"
-                    : "bg-cream text-espresso border-olive-pale hover:bg-olive-pale"
-                }`}
-              >
-                {cuisine}
-              </button>
-            ))}
+      {/* Pantry staples note */}
+      <div className="flex items-start gap-3 rounded-[8px] border border-[rgba(107,122,58,0.2)] bg-[rgba(107,122,58,0.05)] p-4">
+        <Info size={17} className="mt-0.5 shrink-0 text-espresso/75" />
+        <p className="text-[12px] leading-[19.5px] text-espresso/75">
+          We'll assume you have basic pantry staples — salt, pepper, olive oil, garlic, onions and common spices.
+        </p>
+      </div>
 
+      {/* Cuisine preference */}
+      <div className="flex flex-col gap-4">
+        <h3 className={sectionLabel}>Cuisine preference — optional</h3>
+        <div className="grid grid-cols-3 gap-2">
+          {CUISINES.map((cuisine) => (
             <button
-              onClick={() => toggleCuisine("I'm Feeling Lucky")}
-              className={`w-full mt-1.5 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium border-2 border-dashed transition-colors ${
-                selectedCuisines.includes("I'm Feeling Lucky")
-                  ? "bg-olive text-white border-olive"
-                  : "bg-cream text-olive border-olive hover:bg-olive-pale"
+              key={cuisine}
+              type="button"
+              onClick={() => toggleCuisine(cuisine)}
+              aria-pressed={selectedCuisines.includes(cuisine)}
+              className={`h-12 rounded-[8px] px-1 text-[14px] font-semibold leading-5 transition-colors ${
+                selectedCuisines.includes(cuisine)
+                  ? "bg-olive text-white shadow-[0px_0px_0px_2px_#fbf9f3,0px_0px_0px_4px_#536124,0px_4px_6px_-1px_rgba(0,0,0,0.1)]"
+                  : "bg-stone text-espresso hover:bg-olive-pale"
               }`}
             >
-              ✨ I'm Feeling Lucky
+              {cuisine}
             </button>
-          </div>
+          ))}
+          <button
+            type="button"
+            onClick={() => toggleCuisine("Other")}
+            aria-pressed={selectedCuisines.includes("Other")}
+            className={`h-12 rounded-[8px] border text-[14px] font-bold leading-5 transition-colors ${
+              selectedCuisines.includes("Other")
+                ? "border-olive bg-olive text-white"
+                : "border-olive/20 bg-olive/10 text-olive hover:bg-olive/15"
+            }`}
+          >
+            Other
+          </button>
 
-          {/* Other Cuisine Input */}
-          {selectedCuisines.includes("Other") && (
-            <Input
-              placeholder="What cuisine are you craving?"
-              className="mt-1 focus-visible:ring-olive border-olive-pale h-11 text-[15px]"
-              value={otherCuisine}
-              onChange={(e) => setOtherCuisine(e.target.value)}
-            />
-          )}
+          <button
+            type="button"
+            onClick={() => toggleCuisine("I'm Feeling Lucky")}
+            aria-pressed={selectedCuisines.includes("I'm Feeling Lucky")}
+            className={`col-span-3 mt-1 flex h-12 items-center justify-center gap-2 rounded-[8px] border-2 border-dashed text-[14px] font-bold leading-5 transition-colors ${
+              selectedCuisines.includes("I'm Feeling Lucky")
+                ? "border-olive bg-olive text-white"
+                : "border-[#6b7a3a] bg-gradient-to-r from-olive/5 to-olive/10 text-olive"
+            }`}
+          >
+            <Sparkles size={16} />
+            I'm Feeling Lucky
+          </button>
         </div>
 
-        {/* Meal Type Grid */}
-        <div className="mt-4 grid grid-cols-2 gap-3">
+        {selectedCuisines.includes("Other") && (
+          <Input
+            placeholder="What cuisine are you craving?"
+            className="h-11 border-olive-pale text-[15px] focus-visible:ring-olive"
+            value={otherCuisine}
+            onChange={(e) => setOtherCuisine(e.target.value)}
+          />
+        )}
+      </div>
+
+      {/* Meal type */}
+      <div className="flex flex-col gap-4">
+        <h3 className={sectionLabel}>Meal type — optional</h3>
+        <div className="grid grid-cols-2 gap-3">
           {MEALS.map((meal) => (
             <button
               key={meal.id}
+              type="button"
               onClick={() => setSelectedMeal(selectedMeal === meal.id ? null : meal.id)}
-              className={`flex flex-col items-center justify-center gap-1.5 p-4 rounded-xl border-2 transition-colors ${
+              aria-pressed={selectedMeal === meal.id}
+              className={`flex flex-col items-center justify-center gap-2 rounded-[12px] py-[25px] transition-colors ${
                 selectedMeal === meal.id
-                  ? "bg-olive-pale border-olive"
-                  : "bg-white border-olive-pale hover:border-olive-mid"
+                  ? "border-2 border-olive bg-olive/5 text-olive"
+                  : "border border-mist/20 bg-white text-espresso hover:border-olive-mid"
               }`}
             >
-              <span className="text-3xl mb-1">{meal.icon}</span>
-              <span className="text-sm font-semibold text-espresso">{meal.id}</span>
+              <span className="text-[24px] leading-8">{meal.icon}</span>
+              <span className="text-[14px] font-bold leading-5">{meal.id}</span>
             </button>
           ))}
         </div>
-
-        {/* Primary CTA */}
-        <div className="mt-10 flex flex-col gap-3">
-          <Button
-            onClick={handleFindRecipes}
-            className="h-auto w-full gap-2 rounded-full border-olive bg-olive py-5 text-[18px] font-bold leading-7 text-white shadow-[0px_10px_15px_-3px_rgba(0,0,0,0.1),0px_4px_6px_-4px_rgba(0,0,0,0.1)]"
-          >
-            Find my recipes
-            <img src={arrowRightIcon} alt="" width={16} height={16} />
-          </Button>
-          {error && <span className="text-center text-[13px] font-medium text-red-600">{error}</span>}
-        </div>
       </div>
 
-      {/* Footer */}
-      <footer className="flex flex-col items-center gap-6 bg-cream px-8 py-12">
-        <span className="font-serif text-[18px] italic leading-7 text-espresso">Fork It</span>
-        <div className="flex gap-6 text-[12px] uppercase leading-4 tracking-[1.2px] text-espresso/40">
-          <span>Privacy</span>
-          <span>Terms</span>
-          <span>Support</span>
-        </div>
-        <span className="text-[10px] uppercase leading-[15px] tracking-[1px] text-espresso/30">
-          © 2024 Fork It. Crafted for the modern kitchen.
-        </span>
-      </footer>
+      {/* Primary CTA */}
+      <div className="flex flex-col gap-3 pt-4">
+        <Button
+          onClick={handleFindRecipes}
+          className="h-auto w-full gap-2 rounded-full border-olive bg-olive py-5 font-serif text-[18px] font-bold leading-7 text-white shadow-[0px_20px_25px_-5px_rgba(0,0,0,0.1),0px_8px_10px_-6px_rgba(0,0,0,0.1)]"
+        >
+          Find My Recipes
+          <img src={arrowRightIcon} alt="" width={16} height={16} />
+        </Button>
+        {error && <span className="text-center text-[13px] font-medium text-red-600">{error}</span>}
+      </div>
     </div>
   );
 }

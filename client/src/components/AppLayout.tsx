@@ -5,17 +5,18 @@ import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle, SheetClose 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
+import { supabase } from "@/lib/supabase";
 
 interface AppLayoutProps {
   children: ReactNode;
 }
 
 export default function AppLayout({ children }: AppLayoutProps) {
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
 
   const handleLogout = async () => {
-    // We will hook this up to supabase.auth.signOut() later
-    console.log("Logout clicked");
+    await supabase.auth.signOut();
+    setLocation("/");
   };
 
   return (

@@ -3,8 +3,9 @@ import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import Auth from "@/pages/Auth";
+import Welcome from "@/pages/Welcome";
 import AppLayout from "@/components/AppLayout";
+import RequireAuth from "@/components/RequireAuth";
 
 import Home from "@/pages/Home";
 import Loading from "@/pages/Loading";
@@ -12,11 +13,13 @@ import Loading from "@/pages/Loading";
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={Auth} />
+      <Route path="/" component={Welcome} />
       <Route path="/home">
-        <AppLayout>
-          <Home />
-        </AppLayout>
+        <RequireAuth>
+          <AppLayout>
+            <Home />
+          </AppLayout>
+        </RequireAuth>
       </Route>
       <Route path="/loading">
         <AppLayout>
