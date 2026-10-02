@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import express from "express";
+import { PANTRY_STAPLES as PANTRY_STAPLE_LIST } from "./pantry";
 
 let _anthropic: Anthropic;
 function getAnthropic() {
@@ -9,33 +10,8 @@ function getAnthropic() {
   return _anthropic;
 }
 
-const PANTRY_STAPLES = "salt, black pepper, white pepper, olive oil, vegetable oil, butter, garlic, onions, sugar, eggs, milk, soy sauce, white vinegar, apple cider vinegar, cumin, coriander, turmeric, paprika, chili powder, oregano, cinnamon, garam masala, red chili flakes, ketchup, mustard, hot sauce, lemon juice, honey, tomato paste, sesame oil";
+const PANTRY_STAPLES = PANTRY_STAPLE_LIST.join(", ");
 const MODEL = "claude-haiku-4-5-20251001";
-
-// Agent 1: Parses natural text or image into a clean array of ingredients
-export async function getCleanIngredients(text?: string, imageBase64?: string): Promise<string[]> {
-  const content: any[] = [];
-  if (text) {
-    content.push({ type: "text", text: `Input: ${text}` });
-  }
-  
-  if (imageBase64) {
-    // Basic media type inference. Base64 strings sent from client usually include the data prefix.
-    const mediaType = imageBase64.startsWith("data:image/png") ? "image/png" : "image/jpeg";
-    const data = imageBase64.replace(/^data:image\/\w+;base64,/, "");
-    content.push({ type: "image", source: { type: "base64", media_type: mediaType, data } });
-  }
-
-  const response = await getAnthropic().messages.create({
-    model: MODEL,
-    max_tokens: 200,
-    system: "You are a precise ingredient parser. Given the user's text or image input showing food items, extract the available core ingredients. Return ONLY a comma-separated list of items. Exclude basic pantry staples like salt, oil, or pepper. Do not output anything other than the comma-separated list.",
-    messages: [{ role: "user", content: content.length > 0 ? content : "No ingredients provided." }],
-  });
-  
-  const textRes = (response.content[0] as any).text || "";
-  return textRes.split(",").map((i: string) => i.trim()).filter((i: string) => i.length > 0);
-}
 
 // Fetch helper for Agent 2: Spoonacular API
 async function fetchSpoonacular(ingredients: string[]) {

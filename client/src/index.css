@@ -47,8 +47,8 @@
   --chart-4: 280 55% 50%;
   --chart-5: 42 80% 52%;
 
-  --font-sans: 'Plus Jakarta Sans', 'Open Sans', sans-serif;
-  --font-serif: Georgia, serif;
+  --font-sans: 'Manrope', 'Plus Jakarta Sans', sans-serif;
+  --font-serif: 'Liberation Serif', 'Times New Roman', Times, serif;
   --font-mono: Menlo, monospace;
   --radius: .75rem;
 

@@ -8,21 +8,11 @@ export default function Loading() {
   useEffect(() => {
     async function processRecipes() {
       try {
-        const ingredientsText = sessionStorage.getItem("current_ingredients_text") || "";
-        
-        // Agent 1: Parse ingredients
-        const parseRes = await fetch("/api/parse-ingredients", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text: ingredientsText })
-        });
-        
-        if (!parseRes.ok) throw new Error("Ingredient parsing failed.");
-        const parseData = await parseRes.json();
-        let finalIngredients = parseData.ingredients || [];
-        
+        // Ingredients were already parsed and selected on the Home screen.
+        const finalIngredients: string[] = JSON.parse(sessionStorage.getItem("current_ingredients") || "[]");
         if (finalIngredients.length === 0) {
-          finalIngredients = ingredientsText.split(",").map(s => s.trim());
+          setLocation("/home");
+          return;
         }
 
         // Agent 2/4: Retrieve Recipes

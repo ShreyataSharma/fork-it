@@ -12,11 +12,14 @@ export default {
       },
       colors: {
         // Fork It Design System Colors
-        cream: "#F7F5EF",
-        olive: "#6B7A3A",
+        // Values from the Figma Home frame (Fork It file, node 2:2)
+        cream: "#FBF9F3",
+        olive: "#536124",
         "olive-mid": "#8EA35F",
         "olive-pale": "#EFF2E4",
-        espresso: "#1E2118",
+        espresso: "#1B1C18",
+        stone: "#EAE8E2",
+        mist: "#C7C8B7",
 
         // Flat / base colors (regular buttons)
         background: "hsl(var(--background) / <alpha-value>)",
