@@ -2,9 +2,11 @@ import { Express } from "express";
 import { Server } from "http";
 import { getCuratedRecipes, proxySousChefChat } from "./agents";
 import { parseRouter } from "./routes/parse";
+import { recipesRouter } from "./routes/recipes";
 
 export async function registerRoutes(httpServer: Server, app: Express) {
   app.use(parseRouter);
+  app.use(recipesRouter);
 
   // Agent 2 & Agent 4: Curate/Generate the dynamic top 10 recipes
   app.post("/api/get-recipes", async (req, res) => {

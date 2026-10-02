@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
+import { CUISINES, type RecipeSearchResponse } from "@shared/recipes";
 
 export default function Loading() {
   const [, setLocation] = useLocation();
@@ -15,22 +16,20 @@ export default function Loading() {
           return;
         }
 
-        // Agent 2/4: Retrieve Recipes
-        const recipesRes = await fetch("/api/get-recipes", {
+        const selectedCuisines: string[] = JSON.parse(sessionStorage.getItem("current_cuisines") || "[]");
+        const mealType = sessionStorage.getItem("current_meal") || undefined;
+        // "Other" and "I'm Feeling Lucky" aren't Spoonacular cuisines, so only send picker cuisines.
+        const cuisine = selectedCuisines.filter((c) => (CUISINES as readonly string[]).includes(c));
+
+        const recipesRes = await fetch("/api/recipes", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ingredients: finalIngredients })
+          body: JSON.stringify({ ingredients: finalIngredients, cuisine, mealType }),
         });
-        
-        if (!recipesRes.ok) throw new Error("Failed to fetch recipes from AI.");
-        
         const recipesData = await recipesRes.json();
-        
-        if (!recipesData.recipes || recipesData.recipes.length === 0) {
-          throw new Error("No readable recipes matched.");
-        }
+        if (!recipesRes.ok) throw new Error(recipesData.error || "We couldn't find recipes right now.");
 
-        sessionStorage.setItem("found_recipes", JSON.stringify(recipesData.recipes));
+        sessionStorage.setItem("found_recipes", JSON.stringify((recipesData as RecipeSearchResponse).recipes));
         setLocation("/recipes");
 
       } catch (err: any) {

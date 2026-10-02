@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import type { Recipe } from "@/pages/home";
+import type { Recipe } from "@shared/recipes";
 
 const STORAGE_KEY = "forkit_history";
 const MAX_HISTORY = 50;

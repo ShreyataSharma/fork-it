@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import type { Recipe, RecipeIngredient, RecipeMacros } from "@/pages/home";
+import type { Recipe, RecipeIngredient, RecipeMacros } from "@shared/recipes";
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -477,12 +477,16 @@ export default function RecipeDetail({ recipe, onBack, userIngredients }: Props)
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div className="flex-1">
             <div className="flex flex-wrap gap-2 mb-2">
-              <Badge variant="outline" className={difficultyColors[recipe.difficulty] || ""} data-testid="badge-recipe-difficulty">
-                {recipe.difficulty}
-              </Badge>
-              <Badge variant="outline" className="text-muted-foreground" data-testid="badge-recipe-cuisine">
-                {recipe.cuisine}
-              </Badge>
+              {recipe.difficulty && (
+                <Badge variant="outline" className={difficultyColors[recipe.difficulty] || ""} data-testid="badge-recipe-difficulty">
+                  {recipe.difficulty}
+                </Badge>
+              )}
+              {recipe.cuisine && (
+                <Badge variant="outline" className="text-muted-foreground" data-testid="badge-recipe-cuisine">
+                  {recipe.cuisine}
+                </Badge>
+              )}
               {recipe.tags.map((tag) => (
                 <Badge key={tag} variant="secondary" className="text-xs" data-testid={`badge-tag-${tag}`}>
                   {tag}

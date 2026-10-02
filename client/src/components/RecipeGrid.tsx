@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 import { Clock, ChefHat, Users, Flame } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import type { Recipe } from "@/pages/home";
+import type { Recipe } from "@shared/recipes";
 
 const cuisineEmojis: Record<string, string> = {
   Italian: "🍝", Asian: "🍜", Mexican: "🌮", American: "🍔",
@@ -44,16 +44,20 @@ export default function RecipeGrid({ recipes, onSelectRecipe }: Props) {
                     <span className="text-lg">
                       {cuisineEmojis[recipe.cuisine] || "🍽️"}
                     </span>
-                    <Badge
-                      variant="outline"
-                      className={`text-xs ${difficultyColors[recipe.difficulty] || ""}`}
-                      data-testid={`badge-difficulty-${recipe.id}`}
-                    >
-                      {recipe.difficulty}
-                    </Badge>
-                    <Badge variant="outline" className="text-xs text-muted-foreground" data-testid={`badge-cuisine-${recipe.id}`}>
-                      {recipe.cuisine}
-                    </Badge>
+                    {recipe.difficulty && (
+                      <Badge
+                        variant="outline"
+                        className={`text-xs ${difficultyColors[recipe.difficulty] || ""}`}
+                        data-testid={`badge-difficulty-${recipe.id}`}
+                      >
+                        {recipe.difficulty}
+                      </Badge>
+                    )}
+                    {recipe.cuisine && (
+                      <Badge variant="outline" className="text-xs text-muted-foreground" data-testid={`badge-cuisine-${recipe.id}`}>
+                        {recipe.cuisine}
+                      </Badge>
+                    )}
                   </div>
                   <h3 className="font-bold text-foreground text-lg leading-tight group-hover:text-primary transition-colors" data-testid={`text-recipe-name-${recipe.id}`}>
                     {recipe.name}

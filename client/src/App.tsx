@@ -9,6 +9,7 @@ import RequireAuth from "@/components/RequireAuth";
 
 import Home from "@/pages/Home";
 import Loading from "@/pages/Loading";
+import Recipes from "@/pages/Recipes";
 
 function Router() {
   return (
@@ -28,7 +29,7 @@ function Router() {
       </Route>
       <Route path="/recipes">
         <AppLayout>
-          <div className="p-6 text-espresso">Recipes Screen Coming Soon...</div>
+          <Recipes />
         </AppLayout>
       </Route>
       <Route>

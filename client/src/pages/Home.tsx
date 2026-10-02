@@ -4,11 +4,8 @@ import { ImagePlus, Info, Loader2, Sparkles, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/lib/supabase";
+import { CUISINES } from "@shared/recipes";
 import arrowRightIcon from "@/assets/home/arrow-right.svg";
-
-const CUISINES = [
-  "Indian", "Italian", "Asian", "Mexican", "Mediterranean", "Korean", "Thai", "Chinese", "Greek"
-];
 
 const MEALS = [
   { id: "Breakfast", icon: "🍳" },
