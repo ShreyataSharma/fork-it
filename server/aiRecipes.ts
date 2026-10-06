@@ -2,10 +2,13 @@ import Anthropic from "@anthropic-ai/sdk";
 import { jsonSchemaOutputFormat } from "@anthropic-ai/sdk/helpers/json-schema";
 import type { MealType, Recipe, RecipeSearchRequest } from "../shared/recipes";
 import { anthropic, HAIKU_MODEL } from "./clients/anthropic";
+import { labelCuisine, labelDifficulty } from "./jev";
 import { ingredientKey, missingFrom, ownsIngredient, PANTRY_STAPLES } from "./pantry";
 
 // First request plus one retry for any slots left by rejected recipes.
 const MAX_ROUNDS = 2;
+// Each request asks for this many more than needed, and the first ones to pass are kept.
+const EXTRA_REQUESTED = 3;
 
 type GeneratedRecipe = {
   name: string;
@@ -110,7 +113,10 @@ function minutes(n: number): string {
   return n > 0 ? `${n} min` : "—";
 }
 
-function toRecipe(g: GeneratedRecipe, userIngredients: string[]): Recipe {
+function toRecipe(g: GeneratedRecipe, req: RecipeSearchRequest): Recipe {
+  const userIngredients = req.ingredients;
+  const steps = g.steps.map((s) => s.text.trim()).filter(Boolean);
+  const total = Math.max(g.prepMinutes, 0) + Math.max(g.cookMinutes, 0);
   return {
     id: idFromName(g.name),
     name: g.name.trim(),
@@ -118,11 +124,12 @@ function toRecipe(g: GeneratedRecipe, userIngredients: string[]): Recipe {
     prepTime: minutes(g.prepMinutes),
     cookTime: minutes(g.cookMinutes),
     servings: g.servings > 0 ? g.servings : 1,
-    cuisine: g.cuisine.trim(),
+    difficulty: labelDifficulty({ totalMinutes: total > 0 ? total : null, stepCount: steps.length }),
+    cuisine: labelCuisine({ source: "ai", cuisines: [g.cuisine.trim()], requested: req.cuisine ?? [] }),
     mainIngredients: g.ingredients.filter((i) => ownsIngredient(i.name, userIngredients)).map((i) => i.name),
     // Every ingredient passed the check, so the user has all of them.
     allIngredients: g.ingredients.map((i) => ({ name: i.name, amount: i.amount, userHas: true })),
-    steps: g.steps.map((s) => s.text.trim()).filter(Boolean),
+    steps,
     tags: [],
     // Nutrition is left empty rather than estimated.
     source: "ai",
@@ -185,7 +192,7 @@ export async function fetchAiRecipes(req: RecipeSearchRequest, count: number, ex
 
   try {
     for (let round = 1; round <= MAX_ROUNDS && recipes.length < count; round++) {
-      const generated = await generate(req, count - recipes.length, Array.from(seen));
+      const generated = await generate(req, count - recipes.length + EXTRA_REQUESTED, Array.from(seen));
       for (const g of generated) {
         const names = g.ingredients.map((i) => i.name);
         const stepIngredients = Array.from(new Set(g.steps.flatMap((s) => s.ingredients)));
@@ -197,12 +204,12 @@ export async function fetchAiRecipes(req: RecipeSearchRequest, count: number, ex
           : missing.length > 0 ? "uses ingredients outside the user's list and staples"
           : g.steps.length === 0 ? "no steps"
           : seen.has(key) ? "duplicate of an earlier recipe"
-          : recipes.length >= count ? "more recipes than requested"
+          : recipes.length >= count ? "extra: enough recipes already passed"
           : undefined;
         const passed = reason === undefined;
         attempts.push({ round, name: g.name, ingredients: names, steps: g.steps, missing, unlistedInSteps, passed, reason });
         seen.add(key);
-        if (passed) recipes.push(toRecipe(g, req.ingredients));
+        if (passed) recipes.push(toRecipe(g, req));
       }
     }
     return { attempts, recipes };

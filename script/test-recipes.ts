@@ -1,5 +1,6 @@
-// Steps 3-5 test: Spoonacular fetch, missing-ingredient filter, and AI recipe fallback,
-// plus POST /api/recipes through an in-process server.
+// Steps 3-6 test: Spoonacular fetch, missing-ingredient filter, AI recipe fallback, and the
+// curator, plus POST /api/recipes through an in-process server.
+// VERBOSE=true also prints each AI recipe's ingredients and per-step ingredients.
 //
 // Live (default): calls Spoonacular and saves each raw response to script/fixtures/.
 //   npx tsx script/test-recipes.ts
@@ -15,10 +16,18 @@ import type { AddressInfo } from "net";
 import type { RecipeSearchRequest } from "../shared/recipes";
 import { liveSpoonacularSearch, MAX_MISSING_INGREDIENTS, type SpoonacularSearch } from "../server/recipes";
 import { missingFrom } from "../server/pantry";
+import { CURATED_COUNT, MAX_PER_CUISINE } from "../server/curate";
 import { findRecipes } from "../server/recipeSearch";
 import { recipesRouter } from "../server/routes/recipes";
 
 const USE_FIXTURES = process.env.USE_FIXTURES === "true";
+const VERBOSE = process.env.VERBOSE === "true";
+
+function tally(values: string[]): string {
+  const counts = new Map<string, number>();
+  for (const v of values) counts.set(v, (counts.get(v) ?? 0) + 1);
+  return Array.from(counts, ([k, n]) => `${k} ${n}`).join(", ");
+}
 const FIXTURES_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), "fixtures");
 
 // Each case reads from, or records to, script/fixtures/<fixture>.json.
@@ -72,17 +81,50 @@ async function main() {
     console.log(`=== ${c.name} ===`);
     console.log(`ingredients: ${c.request.ingredients.join(", ")}${c.request.cuisine ? ` | cuisine: ${c.request.cuisine}` : ""}`);
     const search = c.fixture ? spoonacularSearchFor(c.fixture) : noSpoonacularResults;
-    const { recipes, counts, aiAttempts, aiError } = await findRecipes(c.request, { spoonacularSearch: search });
+    const { recipes, candidates, counts, aiAttempts, aiError } = await findRecipes(c.request, { spoonacularSearch: search });
     console.log(`spoonacular: ${counts.spoonacularFetched} fetched -> ${counts.spoonacular} kept (<= ${MAX_MISSING_INGREDIENTS} missing, with steps)`);
     console.log(`ai:          ${aiAttempts.length} generated -> ${counts.ai} passed`);
     if (aiError) console.log(`ai error:    ${aiError}`);
-    console.log(`total:       ${recipes.length}`);
+    console.log(`candidates:  ${candidates.length} -> curated ${recipes.length}`);
     for (const a of aiAttempts) {
       console.log(`  [ai, round ${a.round}] ${a.name}: ${a.passed ? "PASSED" : `REJECTED (${a.reason})`}`);
+      if (!VERBOSE) continue;
       console.log(`      ingredients: ${a.ingredients.join(", ")}`);
       a.steps.forEach((step, i) => console.log(`      step ${i + 1}: ${step.ingredients.join(", ") || "(none)"}`));
       if (a.unlistedInSteps.length) console.log(`      in steps but not listed: ${a.unlistedInSteps.join(", ")}`);
       if (a.missing.length) console.log(`      not owned: ${a.missing.join(", ")}`);
+    }
+
+    console.log("  curated:");
+    recipes.forEach((r, i) =>
+      console.log(`    ${String(i + 1).padStart(2)}. [${r.source}] ${r.difficulty ?? "?"} | ${r.cuisine || "unlabeled"} | ${r.name}`),
+    );
+    console.log(`  per difficulty: ${tally(recipes.map((r) => r.difficulty ?? "?"))}`);
+    console.log(`  per cuisine:    ${tally(recipes.map((r) => r.cuisine || "unlabeled"))}`);
+
+    const picked = c.request.cuisine ?? [];
+    if (recipes.length > CURATED_COUNT || (candidates.length >= CURATED_COUNT && !picked.length && recipes.length < CURATED_COUNT)) {
+      console.log(`  NOTE: curated ${recipes.length} from ${candidates.length} candidates`);
+    }
+    if (recipes.length > CURATED_COUNT) failed = true;
+    if (picked.length && recipes.some((r) => !picked.includes(r.cuisine))) {
+      console.log("  FAIL: a curated recipe is outside the picked cuisine");
+      failed = true;
+    }
+    if (!picked.length && recipes.length === CURATED_COUNT) {
+      const labeled = recipes.filter((r) => r.cuisine).map((r) => r.cuisine);
+      if (labeled.some((c) => labeled.filter((x) => x === c).length > MAX_PER_CUISINE)) {
+        console.log(`  FAIL: a cuisine appears more than ${MAX_PER_CUISINE} times`);
+        failed = true;
+      }
+    }
+    const levelRank = { Easy: 0, Medium: 1, Hard: 2 } as const;
+    for (const source of ["spoonacular", "ai"] as const) {
+      const ranks = recipes.filter((r) => r.source === source).map((r) => levelRank[r.difficulty ?? "Medium"]);
+      if (ranks.some((rank, i) => i > 0 && rank < ranks[i - 1])) {
+        console.log(`  FAIL: ${source} recipes are not ordered easy to hard`);
+        failed = true;
+      }
     }
 
     if (recipes.some((r) => r.steps.length === 0)) {

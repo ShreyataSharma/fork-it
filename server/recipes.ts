@@ -1,5 +1,6 @@
 import type { MealType, Recipe, RecipeIngredient, RecipeMacros, RecipeSearchRequest } from "../shared/recipes";
 import { spoonacularGet } from "./clients/spoonacular";
+import { labelCuisine, labelDifficulty } from "./jev";
 import { isPantryStaple, missingFrom, normalizeIngredient, ownsIngredient } from "./pantry";
 
 // Keep a recipe only if it needs at most this many ingredients the user doesn't have (staples excluded).
@@ -98,7 +99,9 @@ function mapMacros(r: SpoonRecipe): RecipeMacros | undefined {
   };
 }
 
-function toRecipe(r: SpoonRecipe, missing: string[], userIngredients: string[]): Recipe {
+function toRecipe(r: SpoonRecipe, missing: string[], req: RecipeSearchRequest): Recipe {
+  const userIngredients = req.ingredients;
+  const steps = (r.analyzedInstructions ?? []).flatMap((block) => block.steps.map((s) => s.step));
   const usedIds = new Set((r.usedIngredients ?? []).map((i) => i.id));
   const allIngredients: RecipeIngredient[] = (r.extendedIngredients ?? []).map((i) => ({
     name: i.name,
@@ -112,10 +115,11 @@ function toRecipe(r: SpoonRecipe, missing: string[], userIngredients: string[]):
     prepTime: minutes(r.preparationMinutes) ?? "—",
     cookTime: minutes(r.cookingMinutes) ?? minutes(r.readyInMinutes) ?? "—",
     servings: r.servings ?? 1,
-    cuisine: r.cuisines?.[0] ?? "",
+    difficulty: labelDifficulty({ totalMinutes: r.readyInMinutes && r.readyInMinutes > 0 ? r.readyInMinutes : null, stepCount: steps.length }),
+    cuisine: labelCuisine({ source: "spoonacular", cuisines: r.cuisines ?? [], requested: req.cuisine ?? [] }),
     mainIngredients: Array.from(new Set((r.usedIngredients ?? []).map((i) => i.name))),
     allIngredients,
-    steps: (r.analyzedInstructions ?? []).flatMap((block) => block.steps.map((s) => s.step)),
+    steps,
     tags: [...(r.diets ?? []), ...(r.dishTypes ?? [])],
     macros: mapMacros(r),
     source: "spoonacular",
@@ -165,7 +169,7 @@ export async function fetchSpoonacularRecipes(
     .filter((r) => (r.analyzedInstructions ?? []).some((block) => block.steps.length > 0))
     .map((r) => ({ r, missing: missingIngredients(r, req.ingredients) }))
     .filter(({ missing }) => missing.length <= MAX_MISSING_INGREDIENTS)
-    .map(({ r, missing }) => toRecipe(r, missing, req.ingredients));
+    .map(({ r, missing }) => toRecipe(r, missing, req));
 
   return { fetched: data.results.length, recipes };
 }
