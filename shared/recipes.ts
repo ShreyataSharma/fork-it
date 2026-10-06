@@ -13,7 +13,7 @@ export const MEAL_TYPES = ["Breakfast", "Lunch", "Dinner", "Snacks"] as const;
 export type MealType = (typeof MEAL_TYPES)[number];
 
 export type Difficulty = "Easy" | "Medium" | "Hard";
-export type RecipeSource = "spoonacular" | "web" | "ai";
+export type RecipeSource = "spoonacular" | "ai";
 
 export interface RecipeIngredient {
   name: string;
@@ -46,6 +46,9 @@ export interface Recipe {
   tags: string[];
   macros?: RecipeMacros;
   source: RecipeSource;
+  // Original publisher of a Spoonacular recipe, e.g. "foodista.com". Spoonacular's terms
+  // require crediting it by name with a link to the original page.
+  sourceName?: string;
   sourceUrl?: string;
   image?: string;
   // Share of non-staple ingredients the user already has, 0 to 1.

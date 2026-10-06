@@ -4,7 +4,7 @@ export const PANTRY_STAPLES = [
   "garlic", "onions", "sugar", "eggs", "milk", "soy sauce", "white vinegar",
   "apple cider vinegar", "cumin", "coriander", "turmeric", "paprika", "chili powder",
   "oregano", "cinnamon", "garam masala", "red chili flakes", "ketchup", "mustard",
-  "hot sauce", "lemon juice", "honey", "tomato paste", "sesame oil", "water",
+  "hot sauce", "lemon juice", "honey", "tomato paste", "sesame oil", "water", "oil",
 ];
 
 export function normalizeIngredient(name: string): string {
@@ -42,8 +42,10 @@ export function isPantryStaple(name: string): boolean {
 }
 
 // A recipe ingredient with one of these words is a different product from the plain
-// ingredient: "chicken broth" is not "chicken", "peanut butter" is not "peanut".
-const DERIVED_PRODUCT_WORDS = new Set(["broth", "stock", "sauce", "paste", "butter", "milk", "oil", "powder"]);
+// ingredient: "chicken broth" is not "chicken", "rice vinegar" is not "rice".
+const DERIVED_PRODUCT_WORDS = new Set([
+  "broth", "stock", "sauce", "paste", "butter", "milk", "oil", "powder", "vinegar", "flour", "wine",
+]);
 
 function words(name: string): string[] {
   return name.toLowerCase().replace(/[^a-z\s]/g, " ").split(/\s+/).filter(Boolean).map(singular);

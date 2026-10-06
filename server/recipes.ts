@@ -27,7 +27,9 @@ type SpoonRecipe = {
   title: string;
   image?: string;
   summary?: string;
+  sourceName?: string;
   sourceUrl?: string;
+  creditsText?: string;
   readyInMinutes?: number;
   preparationMinutes?: number | null;
   cookingMinutes?: number | null;
@@ -117,7 +119,8 @@ function toRecipe(r: SpoonRecipe, missing: string[], userIngredients: string[]):
     tags: [...(r.diets ?? []), ...(r.dishTypes ?? [])],
     macros: mapMacros(r),
     source: "spoonacular",
-    sourceUrl: r.sourceUrl,
+    sourceName: r.sourceName || r.creditsText || undefined,
+    sourceUrl: r.sourceUrl || undefined,
     image: r.image,
     coverage: Math.round(computeCoverage(r, missing.length) * 100) / 100,
     missingIngredients: missing,
@@ -158,6 +161,8 @@ export async function fetchSpoonacularRecipes(
 ): Promise<SpoonacularFetchResult> {
   const data = await search(req);
   const recipes = data.results
+    // Every card must be a complete recipe, so skip any without instructions.
+    .filter((r) => (r.analyzedInstructions ?? []).some((block) => block.steps.length > 0))
     .map((r) => ({ r, missing: missingIngredients(r, req.ingredients) }))
     .filter(({ missing }) => missing.length <= MAX_MISSING_INGREDIENTS)
     .map(({ r, missing }) => toRecipe(r, missing, req.ingredients));

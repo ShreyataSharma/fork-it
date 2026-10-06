@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Clock, ChefHat, Users, Flame } from "lucide-react";
+import { Clock, ChefHat, Users, Flame, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import type { Recipe } from "@shared/recipes";
@@ -44,6 +44,16 @@ export default function RecipeGrid({ recipes, onSelectRecipe }: Props) {
                     <span className="text-lg">
                       {cuisineEmojis[recipe.cuisine] || "🍽️"}
                     </span>
+                    {recipe.source === "ai" && (
+                      <Badge
+                        variant="outline"
+                        className="gap-1 border-olive/30 bg-olive-pale text-xs text-olive"
+                        data-testid={`badge-ai-${recipe.id}`}
+                      >
+                        <Sparkles className="w-3 h-3" />
+                        AI-generated
+                      </Badge>
+                    )}
                     {recipe.difficulty && (
                       <Badge
                         variant="outline"

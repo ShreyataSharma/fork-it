@@ -12,14 +12,20 @@ Branch: `backend-v3`
 ## Pipeline
 
 1. **Parse:** Claude Haiku 4.5 (`claude-haiku-4-5-20251001`) turns text or photo input into an ingredient list. Photo results pass through `server/jev.ts`, a placeholder that returns every item as selected.
-2. **Fetch:** Spoonacular `complexSearch` with `includeIngredients`, `diet`, `intolerances`, `sort=max-used-ingredients`, `fillIngredients=true`. Code drops recipes below 60 percent coverage, excluding pantry staples.
-3. **Web fallback:** If there are fewer than 10 recipes, Haiku with the web search tool finds real recipes, maps them to the schema, and keeps the source URL.
-4. **AI fallback:** If there are still fewer than 10, Haiku generates recipes. Code rejects any recipe that uses ingredients outside the user's list plus pantry staples.
-5. **Curate in code:** 4 easy, 3 medium, 3 hard. If a level runs short, fill from the nearest level. If the user picked a cuisine, all 10 match it. Otherwise rotate through `DEFAULT_CUISINES` = Indian, Chinese, Italian, Mexican, Thai, Middle Eastern, Japanese, Korean, with no cuisine repeated more than twice. Order: Spoonacular, then web, then AI. Difficulty and cuisine labels come from a placeholder in `server/jev.ts`.
+2. **Fetch:** Spoonacular `complexSearch` with `includeIngredients`, `cuisine`, `type` (Breakfast → `breakfast`, Snacks → `snack`, Lunch/Dinner/none → `main course`), `diet`, `intolerances`, `sort=max-used-ingredients`, `fillIngredients=true`, `ignorePantry=true`. Code drops recipes without instructions, then keeps a recipe only if it needs at most `MAX_MISSING_INGREDIENTS` (3) ingredients the user doesn't have, not counting pantry staples. A recipe ingredient counts as owned if it contains one of the user's ingredients as whole words ("long grain rice" contains "rice"), unless it is a derived product (broth, stock, sauce, paste, butter, milk, oil, powder, vinegar, flour, wine).
+3. **AI fallback:** If there are fewer than 10 recipes, Haiku generates the remaining number from the user's ingredients plus pantry staples, honoring cuisine and meal type. Code rejects any recipe with even one ingredient outside that list, using the same matching as step 2, and asks once more for any slots left. If still short, it returns what it has. AI recipes have full steps, no nutrition, and an AI-generated badge.
+4. **Full recipes, one required link:** every recipe card holds the full recipe; there are no "view full recipe" links. The only external link is the source credit on Spoonacular recipes (`Source: site name`, linked to the original page), which Spoonacular's terms require: "You must credit the original source in the same manner", meaning the site name with a hyperlink.
+5. **Curate in code:** 4 easy, 3 medium, 3 hard. If a level runs short, fill from the nearest level. If the user picked a cuisine, all 10 match it. Otherwise rotate through `DEFAULT_CUISINES` (the Home page cuisine picker list), with no cuisine repeated more than twice. Order: Spoonacular, then AI. Difficulty and cuisine labels come from a placeholder in `server/jev.ts`.
 6. **Sous Chef:** Haiku answers cooking questions only and refuses anything else, including coding.
 7. **Supabase:** Routes for save, rate, and comment, with Row Level Security enabled on every table.
 
 ## Build steps
 
 - [x] **Step 1:** Set up the Anthropic and Spoonacular clients, read keys from `.env`, and write one test call for each.
-- [ ] Step 2+: Pipeline stages above, in order.
+- [x] **Step 2:** Parse text or photo input into ingredients.
+- [x] **Step 3:** Spoonacular fetch and missing-ingredient filter.
+- [x] **Step 4:** Web search fallback. Dropped in Step 5: every card must hold the full recipe.
+- [x] **Step 5:** AI recipe fallback.
+- [ ] Step 6+: Curation, Sous Chef, Supabase routes.
+
+Testing: `npx tsx script/test-recipes.ts` calls Spoonacular live and records responses to `script/fixtures/` (gitignored). `USE_FIXTURES=true` replays them without using Spoonacular quota.

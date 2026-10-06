@@ -1,10 +1,10 @@
-// Steps 3-4 test: Spoonacular fetch, missing-ingredient filter, and web search fallback,
+// Steps 3-5 test: Spoonacular fetch, missing-ingredient filter, and AI recipe fallback,
 // plus POST /api/recipes through an in-process server.
 //
 // Live (default): calls Spoonacular and saves each raw response to script/fixtures/.
 //   npx tsx script/test-recipes.ts
 // Fixtures: reads those saved responses instead of calling Spoonacular (no quota used).
-// The web search fallback still calls Anthropic in both modes.
+// The AI fallback still calls Anthropic in both modes.
 //   USE_FIXTURES=true npx tsx script/test-recipes.ts
 import fs from "fs";
 import path from "path";
@@ -14,6 +14,7 @@ import { createServer, type Server } from "http";
 import type { AddressInfo } from "net";
 import type { RecipeSearchRequest } from "../shared/recipes";
 import { liveSpoonacularSearch, MAX_MISSING_INGREDIENTS, type SpoonacularSearch } from "../server/recipes";
+import { missingFrom } from "../server/pantry";
 import { findRecipes } from "../server/recipeSearch";
 import { recipesRouter } from "../server/routes/recipes";
 
@@ -39,7 +40,11 @@ function spoonacularSearchFor(fixture: string): SpoonacularSearch {
   };
 }
 
-const CASES: { name: string; fixture: string; request: RecipeSearchRequest }[] = [
+// Simulates Spoonacular finding nothing, so the AI fallback must supply all 10.
+const noSpoonacularResults: SpoonacularSearch = async () => ({ results: [], totalResults: 0 });
+
+// fixture: null means the case uses noSpoonacularResults instead of a saved response.
+const CASES: { name: string; fixture: string | null; request: RecipeSearchRequest; expectAi?: boolean }[] = [
   {
     name: "common list",
     fixture: "common-list",
@@ -51,6 +56,12 @@ const CASES: { name: string; fixture: string; request: RecipeSearchRequest }[] =
     fixture: "indian",
     request: { ingredients: ["chicken", "tomato", "onion", "yogurt", "rice"], cuisine: ["Indian"] },
   },
+  {
+    name: "forced AI fallback (Spoonacular returns nothing)",
+    fixture: null,
+    request: { ingredients: ["chickpeas", "spinach", "tomato", "rice"], mealType: "Dinner" },
+    expectAi: true,
+  },
 ];
 
 async function main() {
@@ -60,23 +71,38 @@ async function main() {
   for (const c of CASES) {
     console.log(`=== ${c.name} ===`);
     console.log(`ingredients: ${c.request.ingredients.join(", ")}${c.request.cuisine ? ` | cuisine: ${c.request.cuisine}` : ""}`);
-    const { recipes, counts, webError } = await findRecipes(c.request, { spoonacularSearch: spoonacularSearchFor(c.fixture) });
-    console.log(`spoonacular: ${counts.spoonacularFetched} fetched -> ${counts.spoonacular} kept (<= ${MAX_MISSING_INGREDIENTS} missing)`);
-    console.log(`web:         ${counts.webFound} found -> ${counts.web} kept`);
-    if (webError) console.log(`web error:   ${webError}`);
+    const search = c.fixture ? spoonacularSearchFor(c.fixture) : noSpoonacularResults;
+    const { recipes, counts, aiAttempts, aiError } = await findRecipes(c.request, { spoonacularSearch: search });
+    console.log(`spoonacular: ${counts.spoonacularFetched} fetched -> ${counts.spoonacular} kept (<= ${MAX_MISSING_INGREDIENTS} missing, with steps)`);
+    console.log(`ai:          ${aiAttempts.length} generated -> ${counts.ai} passed`);
+    if (aiError) console.log(`ai error:    ${aiError}`);
     console.log(`total:       ${recipes.length}`);
-    for (const r of recipes.filter((r) => r.source === "web")) {
-      const missing = r.missingIngredients ?? [];
-      console.log(`  [web] ${r.name}`);
-      console.log(`      url: ${r.sourceUrl}`);
-      console.log(`      missing (${missing.length}): ${missing.join(", ") || "(none)"}`);
+    for (const a of aiAttempts) {
+      console.log(`  [ai, round ${a.round}] ${a.name}: ${a.passed ? "PASSED" : `REJECTED (${a.reason})`}`);
+      console.log(`      ingredients: ${a.ingredients.join(", ")}`);
+      if (a.missing.length) console.log(`      not owned: ${a.missing.join(", ")}`);
     }
-    if (recipes.some((r) => (r.missingIngredients?.length ?? 0) > MAX_MISSING_INGREDIENTS)) {
-      console.log("  FAIL: a recipe over the missing-ingredient limit got through");
+
+    if (recipes.some((r) => r.steps.length === 0)) {
+      console.log("  FAIL: a recipe has no steps");
       failed = true;
     }
-    if (recipes.some((r) => r.source === "web" && (!r.sourceUrl || r.steps.length > 0))) {
-      console.log("  FAIL: a web recipe has no source URL or has copied steps");
+    if (recipes.some((r) => r.source === "spoonacular" && (r.missingIngredients?.length ?? 0) > MAX_MISSING_INGREDIENTS)) {
+      console.log("  FAIL: a Spoonacular recipe over the missing-ingredient limit got through");
+      failed = true;
+    }
+    const ai = recipes.filter((r) => r.source === "ai");
+    if (ai.some((r) => missingFrom(r.allIngredients.map((i) => i.name), c.request.ingredients).length > 0 || r.macros)) {
+      console.log("  FAIL: an AI recipe uses an ingredient the user lacks, or has estimated nutrition");
+      failed = true;
+    }
+    const firstAi = recipes.findIndex((r) => r.source === "ai");
+    if (firstAi >= 0 && recipes.slice(firstAi).some((r) => r.source !== "ai")) {
+      console.log("  FAIL: AI recipes are not after all Spoonacular recipes");
+      failed = true;
+    }
+    if (c.expectAi && counts.ai === 0) {
+      console.log("  FAIL: expected the AI fallback to supply recipes");
       failed = true;
     }
     console.log();
