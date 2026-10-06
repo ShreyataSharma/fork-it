@@ -80,6 +80,8 @@ async function main() {
     for (const a of aiAttempts) {
       console.log(`  [ai, round ${a.round}] ${a.name}: ${a.passed ? "PASSED" : `REJECTED (${a.reason})`}`);
       console.log(`      ingredients: ${a.ingredients.join(", ")}`);
+      a.steps.forEach((step, i) => console.log(`      step ${i + 1}: ${step.ingredients.join(", ") || "(none)"}`));
+      if (a.unlistedInSteps.length) console.log(`      in steps but not listed: ${a.unlistedInSteps.join(", ")}`);
       if (a.missing.length) console.log(`      not owned: ${a.missing.join(", ")}`);
     }
 
