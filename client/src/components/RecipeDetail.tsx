@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Clock, Flame, Users, ChefHat, CheckCircle2, ArrowLeft, MessageSquare, Send, Loader2, X, ShoppingBag, Minus, Plus } from "lucide-react";
+import { Clock, Flame, Users, ChefHat, CheckCircle2, ArrowLeft, MessageSquare, Send, Loader2, X, ShoppingBag, Minus, Plus, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -347,6 +347,7 @@ export default function RecipeDetail({ recipe, onBack, userIngredients }: Props)
   const [isStreaming, setIsStreaming] = useState(false);
   const [selectedIngredients, setSelectedIngredients] = useState<Set<string>>(new Set());
   const [servings, setServings] = useState(recipe.servings);
+  const isWebRecipe = recipe.source === "web";
   const chatEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -496,9 +497,11 @@ export default function RecipeDetail({ recipe, onBack, userIngredients }: Props)
             <h1 className="text-3xl font-bold text-foreground mb-2" data-testid="text-recipe-title">
               {recipe.name}
             </h1>
-            <p className="text-muted-foreground text-base" data-testid="text-recipe-description">
-              {recipe.description}
-            </p>
+            {!isWebRecipe && (
+              <p className="text-muted-foreground text-base" data-testid="text-recipe-description">
+                {recipe.description}
+              </p>
+            )}
           </div>
           <div className="w-16 h-16 rounded-2xl bg-accent flex items-center justify-center flex-shrink-0">
             <ChefHat className="w-9 h-9 text-primary" />
@@ -713,8 +716,24 @@ export default function RecipeDetail({ recipe, onBack, userIngredients }: Props)
           </div>
         </div>
 
-        {/* Steps */}
+        {/* Steps, or summary + source link for web recipes */}
         <div className="md:col-span-3">
+          {isWebRecipe ? (
+            <div className="bg-card border border-card-border rounded-2xl p-6 shadow-sm">
+              <h2 className="font-bold text-lg text-foreground mb-4">About this recipe</h2>
+              <p className="text-sm text-foreground leading-relaxed" data-testid="text-recipe-summary">
+                {recipe.description}
+              </p>
+              {recipe.sourceUrl && (
+                <Button asChild className="mt-5 gap-2 rounded-full" data-testid="button-view-full-recipe">
+                  <a href={recipe.sourceUrl} target="_blank" rel="noopener noreferrer">
+                    View full recipe
+                    <ExternalLink className="w-4 h-4" />
+                  </a>
+                </Button>
+              )}
+            </div>
+          ) : (
           <div className="bg-card border border-card-border rounded-2xl p-6 shadow-sm">
             <h2 className="font-bold text-lg text-foreground mb-4">Instructions</h2>
             <div className="space-y-4">
@@ -740,6 +759,7 @@ export default function RecipeDetail({ recipe, onBack, userIngredients }: Props)
               })}
             </div>
           </div>
+          )}
 
           {/* Nutrition Chart — below instructions */}
           {recipe.macros && <NutritionChart macros={recipe.macros} defaultServings={recipe.servings} />}

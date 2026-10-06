@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { CUISINES, MEAL_TYPES, type Cuisine, type MealType, type RecipeSearchRequest } from "../../shared/recipes";
 import { SpoonacularError } from "../clients/spoonacular";
-import { fetchSpoonacularRecipes } from "../recipes";
+import { findRecipes } from "../recipeSearch";
 
 const MAX_INGREDIENTS = 50;
 
@@ -52,7 +52,7 @@ recipesRouter.post("/api/recipes", async (req, res) => {
   };
 
   try {
-    const { recipes } = await fetchSpoonacularRecipes(request);
+    const { recipes } = await findRecipes(request);
     res.json({ recipes });
   } catch (err) {
     console.error("[recipes]", err);

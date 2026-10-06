@@ -1,6 +1,6 @@
 import type { MealType, Recipe, RecipeIngredient, RecipeMacros, RecipeSearchRequest } from "../shared/recipes";
 import { spoonacularGet } from "./clients/spoonacular";
-import { isPantryStaple, normalizeIngredient } from "./pantry";
+import { isPantryStaple, missingFrom, normalizeIngredient, ownsIngredient } from "./pantry";
 
 // Keep a recipe only if it needs at most this many ingredients the user doesn't have (staples excluded).
 export const MAX_MISSING_INGREDIENTS = 3;
@@ -45,11 +45,12 @@ type SpoonRecipe = {
   };
 };
 
-type ComplexSearchResponse = { results: SpoonRecipe[]; totalResults: number };
+export type ComplexSearchResponse = { results: SpoonRecipe[]; totalResults: number };
 
-// Ingredients the recipe needs that the user lacks, not counting pantry staples.
-export function missingIngredients(r: SpoonRecipe): string[] {
-  return (r.missedIngredients ?? []).filter((i) => !isPantryStaple(i.name)).map((i) => i.name);
+// Spoonacular sometimes lists an ingredient as missed even when the user searched for it,
+// so the missed list is checked against the user's own ingredients too.
+function missingIngredients(r: SpoonRecipe, userIngredients: string[]): string[] {
+  return missingFrom((r.missedIngredients ?? []).map((i) => i.name), userIngredients);
 }
 
 // User ingredients used divided by total ingredients, ignoring pantry staples on both sides.
@@ -95,12 +96,12 @@ function mapMacros(r: SpoonRecipe): RecipeMacros | undefined {
   };
 }
 
-function toRecipe(r: SpoonRecipe, missing: string[]): Recipe {
+function toRecipe(r: SpoonRecipe, missing: string[], userIngredients: string[]): Recipe {
   const usedIds = new Set((r.usedIngredients ?? []).map((i) => i.id));
   const allIngredients: RecipeIngredient[] = (r.extendedIngredients ?? []).map((i) => ({
     name: i.name,
     amount: formatAmount(i),
-    userHas: usedIds.has(i.id) || isPantryStaple(i.name),
+    userHas: usedIds.has(i.id) || ownsIngredient(i.name, userIngredients) || isPantryStaple(i.name),
   }));
   return {
     id: r.id,
@@ -129,11 +130,15 @@ export type SpoonacularFetchResult = {
   recipes: Recipe[];
 };
 
-export async function fetchSpoonacularRecipes(req: RecipeSearchRequest): Promise<SpoonacularFetchResult> {
-  const data = await spoonacularGet<ComplexSearchResponse>("/recipes/complexSearch", {
+// Returns Spoonacular's raw complexSearch response for a request.
+export type SpoonacularSearch = (req: RecipeSearchRequest) => Promise<ComplexSearchResponse>;
+
+// The live API call. The app always uses this; tests can pass a fixture reader instead.
+export const liveSpoonacularSearch: SpoonacularSearch = (req) =>
+  spoonacularGet<ComplexSearchResponse>("/recipes/complexSearch", {
     includeIngredients: req.ingredients.map(normalizeIngredient).join(","),
     cuisine: req.cuisine?.join(","),
-    type: req.mealType ? SPOONACULAR_MEAL_TYPE[req.mealType] : undefined,
+    type: req.mealType ? SPOONACULAR_MEAL_TYPE[req.mealType] : "main course",
     diet: req.diet?.join(","),
     intolerances: req.intolerances?.join(","),
     sort: "max-used-ingredients",
@@ -147,10 +152,15 @@ export async function fetchSpoonacularRecipes(req: RecipeSearchRequest): Promise
     number: RESULT_COUNT,
   });
 
+export async function fetchSpoonacularRecipes(
+  req: RecipeSearchRequest,
+  search: SpoonacularSearch = liveSpoonacularSearch,
+): Promise<SpoonacularFetchResult> {
+  const data = await search(req);
   const recipes = data.results
-    .map((r) => ({ r, missing: missingIngredients(r) }))
+    .map((r) => ({ r, missing: missingIngredients(r, req.ingredients) }))
     .filter(({ missing }) => missing.length <= MAX_MISSING_INGREDIENTS)
-    .map(({ r, missing }) => toRecipe(r, missing));
+    .map(({ r, missing }) => toRecipe(r, missing, req.ingredients));
 
   return { fetched: data.results.length, recipes };
 }

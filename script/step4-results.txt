@@ -1,0 +1,42 @@
+Step 4 test results (live Spoonacular + web search fallback), run 2026-10-05
+Command: npx tsx script/test-recipes.ts
+
+common list (chicken breast, rice, broccoli, garlic, onion, cheddar, tomato): Spoonacular 7 kept of 30 fetched, web 3 kept of 3 found, total 10
+
+  Web recipe: One Pot Cheesy Chicken and Broccoli Rice
+  Source URL: https://whatmollymade.com/one-pot-cheesy-chicken-broccoli-and-rice/
+  Missing ingredients: long grain white rice, cheddar cheese, chicken broth
+
+  Web recipe: Cheesy Broccoli and Chicken Rice Skillet
+  Source URL: https://litecravings.com/cheesy-broccoli-and-chicken-rice-skillet/
+  Missing ingredients: long grain rice, chicken stock
+
+  Web recipe: Chicken Fried Rice with Broccoli
+  Source URL: https://vickypham.com/blog/chicken-fried-rice-broccoli/
+  Missing ingredients: none
+
+short list (eggs, spinach): Spoonacular 11 kept of 30 fetched, web search not called (Spoonacular already had 10 or more), total 11
+
+cuisine picked: Indian (chicken, tomato, onion, yogurt, rice): Spoonacular 2 kept of 30 fetched, web 5 kept of 8 found, total 7
+
+  Web recipe: Indian Spiced Yogurt Chicken & Rice
+  Source URL: https://www.abelandcole.co.uk/recipes/indian-spiced-yogurt-chicken-rice
+  Missing ingredients: chicken breast, water
+
+  Web recipe: Rustic Indian Chicken Curry
+  Source URL: https://signatureconcoctions.com/recipes/rustic-indian-chicken-curry-two-ways/
+  Missing ingredients: none
+
+  Web recipe: Chicken Tikka Masala
+  Source URL: https://culinaryginger.com/chicken-tikka-masala/
+  Missing ingredients: chicken breast, ginger
+
+  Web recipe: Indian Chicken Tomato Rice Bowl
+  Source URL: https://cookaifood.com/recipe/indian-chicken-tomato-rice-bowl
+  Missing ingredients: chicken breast
+
+  Web recipe: Tomato Chicken Curry
+  Source URL: https://www.yummytummyaarthi.com/tomato-chicken-curry-recipe-tomato/
+  Missing ingredients: cardamom, ginger
+
+Route checks: valid request 200 (14 recipes), unknown cuisine 400, no ingredients 400. All checks passed.
