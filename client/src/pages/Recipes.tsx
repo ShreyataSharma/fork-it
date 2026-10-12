@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import type { Recipe } from "@shared/recipes";
 import RecipeGrid from "@/components/RecipeGrid";
 import RecipeDetail from "@/components/RecipeDetail";
+import { useRecipeSearch } from "@/lib/recipeSearch";
 
 function readSession<T>(key: string, fallback: T): T {
   try {
@@ -15,7 +16,7 @@ function readSession<T>(key: string, fallback: T): T {
 
 export default function Recipes() {
   const [, setLocation] = useLocation();
-  const [recipes] = useState<Recipe[]>(() => readSession("found_recipes", []));
+  const { recipes, aiPending } = useRecipeSearch();
   const [ingredients] = useState<string[]>(() => readSession("current_ingredients", []));
   const [selected, setSelected] = useState<Recipe | null>(null);
 
@@ -27,7 +28,7 @@ export default function Recipes() {
     );
   }
 
-  if (recipes.length === 0) {
+  if (recipes.length === 0 && !aiPending) {
     return (
       <div className="flex min-h-[calc(100vh-64px)] flex-col items-center justify-center p-6 text-center">
         <h2 className="font-serif text-2xl text-espresso">No recipes matched yet</h2>
@@ -49,7 +50,7 @@ export default function Recipes() {
       <h1 className="font-serif text-[28px] leading-9 text-espresso">
         {recipes.length} {recipes.length === 1 ? "recipe" : "recipes"} for you
       </h1>
-      <RecipeGrid recipes={recipes} onSelectRecipe={setSelected} />
+      <RecipeGrid recipes={recipes} onSelectRecipe={setSelected} loadingMore={aiPending} />
     </div>
   );
 }

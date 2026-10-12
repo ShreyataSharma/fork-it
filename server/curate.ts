@@ -27,18 +27,32 @@ export function orderRecipes(recipes: Recipe[]): Recipe[] {
   ];
 }
 
+export type CurateOptions = {
+  // Recipes already on screen. They stay, and count toward the quotas and the cuisine cap.
+  fixed?: Recipe[];
+  // Only fill each level up to its quota from that level: no borrowing from the nearest level
+  // and no relaxing the cuisine cap. Used for the first batch, so AI recipes can take the
+  // slots it leaves empty.
+  strict?: boolean;
+};
+
 // Pick up to 10 recipes: 4 easy, 3 medium, 3 hard, filling a short level from the nearest
 // one. If the user picked cuisines, only recipes labeled with one of them are eligible.
 // Otherwise each cuisine label is capped at MAX_PER_CUISINE, and unlabeled recipes can fill
-// any slot. Candidates are taken in input order, so Spoonacular recipes win over AI ones.
-// With fewer than 10 eligible recipes, all of them are returned.
-export function curateRecipes(recipes: Recipe[], pickedCuisines: string[] = []): Recipe[] {
-  const pool = pickedCuisines.length ? recipes.filter((r) => pickedCuisines.includes(r.cuisine)) : recipes;
-  if (pool.length < CURATED_COUNT) return orderRecipes(pool);
+// any slot; if the cap would leave fewer than 10, the rest are picked without it.
+// Candidates are taken in input order, so Spoonacular recipes win over AI ones. Unless
+// strict, with 10 or fewer eligible recipes all of them are returned.
+export function curateRecipes(recipes: Recipe[], pickedCuisines: string[] = [], opts: CurateOptions = {}): Recipe[] {
+  const fixed = opts.fixed ?? [];
+  const pool = (pickedCuisines.length ? recipes.filter((r) => pickedCuisines.includes(r.cuisine)) : recipes).filter(
+    (r) => !fixed.includes(r),
+  );
+  if (!opts.strict && fixed.length + pool.length <= CURATED_COUNT) return orderRecipes([...fixed, ...pool]);
 
-  const chosen = new Set<Recipe>();
+  const chosen = new Set<Recipe>(fixed);
   const perCuisine = new Map<string, number>();
-  const capCuisines = pickedCuisines.length === 0;
+  for (const r of fixed) if (r.cuisine) perCuisine.set(r.cuisine, (perCuisine.get(r.cuisine) ?? 0) + 1);
+  let capCuisines = pickedCuisines.length === 0;
   const fits = (r: Recipe) => !capCuisines || !r.cuisine || (perCuisine.get(r.cuisine) ?? 0) < MAX_PER_CUISINE;
 
   // Take up to n unchosen recipes of the given level; returns how many were taken.
@@ -54,13 +68,37 @@ export function curateRecipes(recipes: Recipe[], pickedCuisines: string[] = []):
     return taken;
   };
 
-  const short = {} as Record<Difficulty, number>;
-  for (const lvl of LEVELS) short[lvl] = DIFFICULTY_QUOTA[lvl] - takeFrom(lvl, DIFFICULTY_QUOTA[lvl]);
-  for (const lvl of LEVELS) {
-    for (const near of NEAREST[lvl]) {
-      if (short[lvl] > 0) short[lvl] -= takeFrom(near, short[lvl]);
+  // Fill each level up to its quota, then (unless strict) what's still short from the nearest levels.
+  const fill = () => {
+    const short = {} as Record<Difficulty, number>;
+    for (const lvl of LEVELS) {
+      const have = Array.from(chosen).filter((r) => level(r) === lvl).length;
+      short[lvl] = Math.max(0, DIFFICULTY_QUOTA[lvl] - have);
+      short[lvl] -= takeFrom(lvl, short[lvl]);
     }
+    if (opts.strict) return;
+    for (const lvl of LEVELS) {
+      for (const near of NEAREST[lvl]) {
+        if (short[lvl] > 0) short[lvl] -= takeFrom(near, short[lvl]);
+      }
+    }
+  };
+
+  fill();
+  if (!opts.strict && chosen.size < CURATED_COUNT && capCuisines) {
+    capCuisines = false;
+    fill();
   }
 
   return orderRecipes(Array.from(chosen));
+}
+
+// Slots per level that the curated list leaves for recipes of that level.
+export function emptySlots(curated: Recipe[]): Partial<Record<Difficulty, number>> {
+  const empty: Partial<Record<Difficulty, number>> = {};
+  for (const lvl of LEVELS) {
+    const n = DIFFICULTY_QUOTA[lvl] - curated.filter((r) => level(r) === lvl).length;
+    if (n > 0) empty[lvl] = n;
+  }
+  return empty;
 }

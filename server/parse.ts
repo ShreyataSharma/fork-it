@@ -36,8 +36,10 @@ const HAIKU_OUTPUT_FORMAT = jsonSchemaOutputFormat({
         properties: {
           name: { type: "string" },
           description: { type: "string" },
+          // Other things a photo item could be. Jev picks the item's identity from these and name.
+          alternatives: { type: "array", items: { type: "string" } },
         },
-        required: ["name", "description"],
+        required: ["name", "description", "alternatives"],
         additionalProperties: false,
       },
     },
@@ -50,7 +52,8 @@ const SYSTEM_PROMPT = `You extract cooking ingredients from what a user has in t
 
 For each distinct food item, return:
 - name: a lowercase, singular, plain grocery name that would work as a recipe search term. Drop brands, quantities, and packaging ("2 cartons of Chobani Greek yogurt" becomes "greek yogurt", "tomatoes" becomes "tomato"). Make ambiguous names specific: "pepper" is "black pepper" when it means the spice and "bell pepper" when it means the vegetable.
-- description: a short note on what you saw or read, such as "half-full carton on the top shelf" or "user said 'some leftover rice'".
+- description: a short note on what you saw or read, such as "half-full carton on the top shelf" or "user said 'some leftover rice'". For a photo, describe what makes the item recognizable (color, shape, label text, packaging).
+- alternatives: for a photo, up to 3 other plain grocery names the item could be if you can't be certain from the photo (a green citrus could be "lime" or "lemon"; an unlabeled white tub could be "sour cream" or "plain yogurt"). Use an empty list when you're certain, and always for text.
 
 Include pantry items like salt or oil if present. List each item once. Only include items you can actually see or that the user actually mentioned; do not guess at hidden or implied items.
 
@@ -90,14 +93,18 @@ export async function parseIngredients(input: ParseInput): Promise<ParseResult> 
   // Normalize and dedupe; Haiku is asked for lowercase singular names but code enforces it.
   const seen = new Set<string>();
   const items = response.parsed_output.ingredients
-    .map((i) => ({ name: normalizeIngredient(i.name), description: i.description.trim() }))
+    .map((i) => ({ name: normalizeIngredient(i.name), description: i.description.trim(), alternatives: i.alternatives }))
     .filter((i) => i.name && !seen.has(i.name) && seen.add(i.name));
 
+  // Jev may hide photo items or rename them, so dedupe again after.
   const classified =
     source === "photo"
-      ? classifyFridgeItems(items)
-      : items.map((i) => ({ ...i, selected: true, confidence: null }));
-  const withSource = classified.map((i) => ({ ...i, source }) as ParsedIngredient);
+      ? await classifyFridgeItems(items)
+      : items.map((i) => ({ name: i.name, description: i.description, selected: true, confidence: null }));
+  const kept = new Set<string>();
+  const withSource = classified
+    .filter((i) => !kept.has(i.name) && kept.add(i.name))
+    .map((i) => ({ ...i, source }) as ParsedIngredient);
 
   const ingredients = withSource.filter((i) => !isPantryStaple(i.name));
   const staples = withSource.filter((i) => isPantryStaple(i.name));

@@ -68,3 +68,16 @@ export interface RecipeSearchRequest {
 export interface RecipeSearchResponse {
   recipes: Recipe[];
 }
+
+// POST /api/recipes streams newline-delimited JSON:
+// - "first": the curated Spoonacular recipes, as soon as they're ready. aiPending says whether
+//   AI recipes will follow.
+// - "ai": one AI recipe as soon as it passes its checks; it goes after every card shown so far.
+// - "done": the final list, sent only when aiPending was true. It starts with every card already
+//   sent, in order, and may end with leftover Spoonacular recipes for slots AI didn't fill.
+// - "error": the stream failed after the first message; the cards shown so far stay.
+export type RecipeStreamMessage =
+  | { type: "first"; recipes: Recipe[]; aiPending: boolean }
+  | { type: "ai"; recipe: Recipe }
+  | { type: "done"; recipes: Recipe[] }
+  | { type: "error"; error: string };

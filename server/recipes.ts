@@ -1,7 +1,7 @@
 import type { MealType, Recipe, RecipeIngredient, RecipeMacros, RecipeSearchRequest } from "../shared/recipes";
 import { spoonacularGet } from "./clients/spoonacular";
-import { labelCuisine, labelDifficulty } from "./jev";
-import { isPantryStaple, missingFrom, normalizeIngredient, ownsIngredient } from "./pantry";
+import { findMissing, labelCuisine, labelDifficulty } from "./jev";
+import { isPantryStaple, normalizeIngredient, ownsIngredient } from "./pantry";
 
 // Keep a recipe only if it needs at most this many ingredients the user doesn't have (staples excluded).
 export const MAX_MISSING_INGREDIENTS = 3;
@@ -50,12 +50,6 @@ type SpoonRecipe = {
 
 export type ComplexSearchResponse = { results: SpoonRecipe[]; totalResults: number };
 
-// Spoonacular sometimes lists an ingredient as missed even when the user searched for it,
-// so the missed list is checked against the user's own ingredients too.
-function missingIngredients(r: SpoonRecipe, userIngredients: string[]): string[] {
-  return missingFrom((r.missedIngredients ?? []).map((i) => i.name), userIngredients);
-}
-
 // User ingredients used divided by total ingredients, ignoring pantry staples on both sides.
 function computeCoverage(r: SpoonRecipe, missing: number): number {
   const used = (r.usedIngredients ?? []).filter((i) => !isPantryStaple(i.name)).length;
@@ -103,10 +97,16 @@ function toRecipe(r: SpoonRecipe, missing: string[], req: RecipeSearchRequest): 
   const userIngredients = req.ingredients;
   const steps = (r.analyzedInstructions ?? []).flatMap((block) => block.steps.map((s) => s.step));
   const usedIds = new Set((r.usedIngredients ?? []).map((i) => i.id));
+  // Missed ingredients that the missing check covered (the user has them, or they're staples).
+  const stillMissing = new Set(missing.map(normalizeIngredient));
+  const covered = new Set(
+    (r.missedIngredients ?? []).map((i) => normalizeIngredient(i.name)).filter((n) => !stillMissing.has(n)),
+  );
   const allIngredients: RecipeIngredient[] = (r.extendedIngredients ?? []).map((i) => ({
     name: i.name,
     amount: formatAmount(i),
-    userHas: usedIds.has(i.id) || ownsIngredient(i.name, userIngredients) || isPantryStaple(i.name),
+    userHas:
+      usedIds.has(i.id) || ownsIngredient(i.name, userIngredients) || isPantryStaple(i.name) || covered.has(normalizeIngredient(i.name)),
   }));
   return {
     id: r.id,
@@ -164,10 +164,19 @@ export async function fetchSpoonacularRecipes(
   search: SpoonacularSearch = liveSpoonacularSearch,
 ): Promise<SpoonacularFetchResult> {
   const data = await search(req);
-  const recipes = data.results
-    // Every card must be a complete recipe, so skip any without instructions.
-    .filter((r) => (r.analyzedInstructions ?? []).some((block) => block.steps.length > 0))
-    .map((r) => ({ r, missing: missingIngredients(r, req.ingredients) }))
+  // Every card must be a complete recipe, so skip any without instructions.
+  const complete = data.results.filter((r) => (r.analyzedInstructions ?? []).some((block) => block.steps.length > 0));
+  // Spoonacular sometimes lists an ingredient as missed even when the user searched for it,
+  // so the missed list is checked against the user's own ingredients and staples too.
+  const missing = await findMissing(
+    complete.map((r) => ({
+      ingredients: (r.missedIngredients ?? []).map((i) => i.name),
+      cuisine: labelCuisine({ source: "spoonacular", cuisines: r.cuisines ?? [], requested: req.cuisine ?? [] }),
+    })),
+    req.ingredients,
+  );
+  const recipes = complete
+    .map((r, i) => ({ r, missing: missing[i] }))
     .filter(({ missing }) => missing.length <= MAX_MISSING_INGREDIENTS)
     .map(({ r, missing }) => toRecipe(r, missing, req));
 

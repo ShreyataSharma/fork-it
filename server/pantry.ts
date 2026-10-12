@@ -11,6 +11,19 @@ export function normalizeIngredient(name: string): string {
   return name.trim().toLowerCase().replace(/\s+/g, " ");
 }
 
+// Connector words left at either end of a scraped name: "onion or", "in piece of ginger".
+const EDGE_WORDS = new Set(["or", "and", "to", "of", "with", "for", "plus", "in", "a", "an", "the"]);
+
+// A name fit to show Jev: letters only (symbols and numbers become spaces), lowercase, with
+// connector words trimmed from both ends. "▢ 2 bay" -> "bay", "onion or" -> "onion". Returns
+// "" when nothing is left.
+export function cleanIngredientName(name: string): string {
+  const words = name.toLowerCase().replace(/[^a-z\s'-]/g, " ").replace(/(^|\s)['-]+|['-]+(\s|$)/g, " ").split(/\s+/).filter(Boolean);
+  while (words.length && EDGE_WORDS.has(words[0])) words.shift();
+  while (words.length && EDGE_WORDS.has(words[words.length - 1])) words.pop();
+  return words.join(" ");
+}
+
 // Words that describe form or prep, not the ingredient itself.
 const DESCRIPTORS = new Set(["ground", "powder", "fresh", "dried", "chopped", "minced", "cloves", "clove"]);
 
@@ -65,13 +78,17 @@ function containsWords(hay: string[], needle: string[]): boolean {
 // ("chicken broth"). A derived-product word the user's own ingredient also has doesn't count,
 // so "chicken broth" still matches a user's "chicken broth".
 export function ownsIngredient(recipeIngredient: string, userIngredients: string[]): boolean {
+  return userIngredients.some((u) => sameByWordRule(recipeIngredient, u) === true);
+}
+
+// The word rule for one pair: true if the recipe ingredient contains the user's as whole words,
+// false if it does but is a derived product ("chicken broth" vs "chicken"), and null when the
+// words don't overlap, so the rule can't tell ("scallion" vs "green onion").
+export function sameByWordRule(recipeIngredient: string, userIngredient: string): boolean | null {
   const recipeKey = ingredientKey(recipeIngredient).split(" ").filter(Boolean);
-  const recipeWords = words(recipeIngredient);
-  return userIngredients.some((u) => {
-    if (!containsWords(recipeKey, ingredientKey(u).split(" ").filter(Boolean))) return false;
-    const userWords = new Set(words(u));
-    return !recipeWords.some((w) => DERIVED_PRODUCT_WORDS.has(w) && !userWords.has(w));
-  });
+  if (!containsWords(recipeKey, ingredientKey(userIngredient).split(" ").filter(Boolean))) return null;
+  const userWords = new Set(words(userIngredient));
+  return !words(recipeIngredient).some((w) => DERIVED_PRODUCT_WORDS.has(w) && !userWords.has(w));
 }
 
 // Ingredient names a recipe needs that the user lacks: drops pantry staples and anything

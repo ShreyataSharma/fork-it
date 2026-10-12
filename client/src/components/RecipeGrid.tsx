@@ -19,9 +19,11 @@ const difficultyColors: Record<string, string> = {
 interface Props {
   recipes: Recipe[];
   onSelectRecipe: (recipe: Recipe) => void;
+  // Shows a small loading card after the recipes while AI ones are being written.
+  loadingMore?: boolean;
 }
 
-export default function RecipeGrid({ recipes, onSelectRecipe }: Props) {
+export default function RecipeGrid({ recipes, onSelectRecipe, loadingMore }: Props) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       {recipes.map((recipe, idx) => (
@@ -120,6 +122,14 @@ export default function RecipeGrid({ recipes, onSelectRecipe }: Props) {
           </Card>
         </motion.div>
       ))}
+      {loadingMore && (
+        <Card className="border-dashed border-card-border" data-testid="card-ai-loading">
+          <CardContent className="flex items-center gap-3 p-5">
+            <Sparkles className="h-5 w-5 animate-pulse text-olive" />
+            <span className="text-sm text-muted-foreground animate-pulse">Writing a few more recipes for you…</span>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
